@@ -110,6 +110,11 @@ scene("flyingNotes", () => {
 
     // Black center box
     const musicBoxSize = width() > height() ? width() / 8 : height() / 8;
+    const boxHalf = musicBoxSize / 2;
+    const boxLeft = cWidth - boxHalf;
+    const boxRight = cWidth + boxHalf;
+    const boxTop = cHeight - boxHalf;
+    const boxBottom = cHeight + boxHalf;
     const musicBox = add([
         rect(musicBoxSize, musicBoxSize),
         anchor("center"),
@@ -118,6 +123,9 @@ scene("flyingNotes", () => {
         area(),
         "musicBox"
     ]);
+    musicBox.onCollide("note", (note) => {
+        playNote(note.dur);
+    });
 
     // Destroy notes off screen
     const leftBound = add([
@@ -130,71 +138,78 @@ scene("flyingNotes", () => {
         destroy(note);
     });
 
-    // Recursively spawn notes
-    const lowSpawnMin = 0.01;
+    // Recursively spawn notes based on slider values
+    const lowSpawnMin = 0.05;
     const lowSpawnMax = 1;
-    const highSpawnMin = 0.05;
+    const highSpawnMin = 0.1;
     const highSpawnMax = 2;
-    let spawnSliderPerc = 0.5;
+    let minWait = getSliderValue(lowSpawnMin, lowSpawnMax, 0.5);
+    let maxWait = getSliderValue(highSpawnMin, highSpawnMax, 0.5)
 
     const yOffsetMin = 10;
     const yOffsetMax = cHeight - 10;
     let yOffset = getSliderValue(yOffsetMin, yOffsetMax, 0.7);
 
-    // FIXME somehow find a way to edit opacity
-    const opacityMin = 0.1;
-    const opacityMax = 1.0;
-    let opacity = getSliderValue(opacityMin, opacityMax, 0.7);
+    const lowScaleMin = 0.015;
+    const lowScaleMax = 0.027;
+    const highScaleMin = 0.025;
+    const highScaleMax = 0.046;
+    let minScale = getSliderValue(lowScaleMin, lowScaleMax, 0.3);
+    let maxScale = getSliderValue(highScaleMin, highScaleMax, 0.3);
 
+    const lowRotMin = -110;
+    const lowRotMax = -25;
+    const highRotMin = -55;
+    const highRotMax = 25;
+    let minRot = -25;
+    let maxRot = 25;
+
+    const xPos = width() + 30;
     function spawnNote() {
         const noteType = choose(notation);
-        const duration = noteType.substring(0, noteType.length - 2);
+        const duration = Number(noteType.substring(0, noteType.length - 2));
         const speed = rand(20, 31) * duration;
-        const xPos = width() + 30;
         const yPos = rand(cHeight - yOffset, cHeight + yOffset + 1);
 
-        const note = add([
+        add([
             pos(xPos, yPos),
             sprite(noteType),
             anchor("center"),
-            scale(rand(0.02, 0.041)),
-            rotate(rand(-25, 26)),
+            scale(rand(minScale, maxScale)),
+            rotate(rand(minRot, maxRot)),
             area(),
             move(musicBox.pos.angle(xPos, yPos), speed),
             "note",
+            {
+                dur: duration,
+            },
         ]);
-
-        note.onCollide("musicBox", () => {
-            playNote(duration);
-        });
-
-        wait(rand(
-            getSliderValue(lowSpawnMin, spawnSliderPerc, lowSpawnMax), 
-            getSliderValue(highSpawnMin, spawnSliderPerc, highSpawnMax),  
-        ), spawnNote);
+        wait(rand(minWait, maxWait), spawnNote);
     }
     spawnNote();
 
     // Update music box and play note
     function playNote(duration) {
-        const boxHalf = musicBoxSize / 2;
         const rectSize = boxHalf / duration;
         const rectHalf = rectSize / 2;
         add([
             rect(rectSize, rectSize),
             anchor("center"),
-            pos(cWidth + rand(-boxHalf + 2 + rectHalf, boxHalf - 2 - rectHalf), cHeight + rand(-boxHalf + 2 + rectHalf, boxHalf - 2 - rectHalf)),
-            lifespan(1 / (duration + 1) + 0.2),
+            pos(
+                rand(boxLeft + rectHalf + 2, boxRight - rectHalf - 2),
+                rand(boxTop + rectHalf + 2, boxBottom - rectHalf - 2),
+            ),
+            lifespan(1 / (duration + 1) + 0.1),
             z(1),
             color(255, 255, 255),
             outline(1, (0, 0, 0)),
         ]);
 
         if (Tone.context.state === "running") {
-            if (Number(duration) < 4) {
-                lowSynth.triggerAttackRelease(choose(longPitches), duration + "n");
+            if (duration < 4) {
+                lowSynth.triggerAttackRelease(choose(longPitches), `${duration}n`);
             } else {
-                highSynth.triggerAttackRelease(choose(shortPitches), duration + "n");
+                highSynth.triggerAttackRelease(choose(shortPitches), `${duration}n`);
             }
         }
     }
@@ -235,12 +250,22 @@ scene("flyingNotes", () => {
                     this.pos = newPos;
 
                     if (this.is("rate")) {
-                        spawnSliderPerc = 1 - perc;
+                        minWait = getSliderValue(lowSpawnMin, lowSpawnMax, 1 - perc);
+                        maxWait = getSliderValue(highSpawnMin, highSpawnMax, 1 - perc);
                     } else if (this.is("freq")) {
                         const newFreq = getSliderValue(filterMin, filterMax, perc);
                         filter.frequency.rampTo(newFreq, 0.1);
+                        if (perc < 0.5) {
+                            minRot = getSliderValue(lowRotMin, lowRotMax, perc);
+                            maxRot = getSliderValue(highRotMin, highRotMax, perc);
+                        } else {
+                            minRot = -25;
+                            maxRot = 25;
+                        }
                     } else if (this.is("verb")) {
                         reverb.wet.value = getSliderValue(reverbMin, reverbMax, perc);
+                        minScale = getSliderValue(lowScaleMin, lowScaleMax, 1 - perc);
+                        maxScale = getSliderValue(highScaleMin, highScaleMax, 1 - perc);
                     } else {
                         delay.wet.value = getSliderValue(delayMin, delayMax, perc);
                         yOffset = getSliderValue(yOffsetMin, yOffsetMax, perc);
