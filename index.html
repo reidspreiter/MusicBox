@@ -8,13 +8,18 @@
 </head>
 <body>
     <canvas id="homeCanvas"></canvas>
-    <h1>Music Box</h1>
+    <h1 id="header">Music Box</h1>
     <div id="buttons">
         <button onclick="" id="startButton">enter</button>
         <button onclick="startAudio()" id="audioButton">enable audio</button>
+        <div id="shapeSelector">
+            <button id="square" onclick="changeShape(1)">&#128915;</button>
+            <button id="circle" onclick="changeShape(2)">&#128901;</button>
+            <button id="star" onclick="changeShape(3)">&#128949;</button>
+        </div>
     </div>
     <script src="https://unpkg.com/tone"></script>
     <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
-    <script src="flyingNotes.js"></script>
+    <script src="musicalShapes.js"></script>
 </body>
 </html>
