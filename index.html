@@ -8,18 +8,19 @@
 </head>
 <body>
     <canvas id="homeCanvas"></canvas>
-    <h1 id="header">Music Box</h1>
-    <div id="buttons">
+    <h1 id="header" class="hide">Music Box</h1>
+    <div id="buttons" class="hide">
         <button onclick="" id="startButton">enter</button>
-        <button onclick="startAudio()" id="audioButton">enable audio</button>
+        <button id="audioButton">enable audio</button>
         <div id="shapeSelector">
-            <button id="square" onclick="changeShape(1)">&#128915;</button>
-            <button id="circle" onclick="changeShape(2)">&#128901;</button>
-            <button id="star" onclick="changeShape(3)">&#128949;</button>
+            <button id="square">&#128915;</button>
+            <button id="circle">&#128901;</button>
+            <button id="star">&#128949;</button>
         </div>
     </div>
     <script src="https://unpkg.com/tone"></script>
     <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
-    <script src="musicalShapes.js"></script>
+    <script src="./synths.js" type="module" ></script>
+    <script src="./musicalShapes.js" type="module" ></script>
 </body>
 </html>

@@ -1,8 +1,17 @@
+import { boxSynth } from './synths.js';
+
 // Remove enable audio button if already enabled
+const audioButton = document.getElementById("audioButton");
 document.addEventListener('DOMContentLoaded', () => {
     if (Tone.context.state === "running") {
-        document.getElementById("audioButton").classList.add("hide");
+        audioButton.classList.add("hide");
     }
+});
+
+// Initialize Tone.js
+audioButton.addEventListener("click", () => {
+    Tone.start();
+    audioButton.classList.add("hide");
 });
 
 // Initialize Kaboom
@@ -13,49 +22,46 @@ kaboom({
 
 // Manage shape select buttons
 let currShape = 1;
+const squareButton = document.getElementById("square");
+const circleButton = document.getElementById("circle");
+const starButton = document.getElementById("star");
+const header = document.getElementById("header");
+const buttonDiv = document.getElementById("buttons");
+squareButton.addEventListener("click", () => changeShape(1));
+circleButton.addEventListener("click", () => changeShape(2));
+starButton.addEventListener("click", () => changeShape(3));
+
 function changeShape(shape) {
     if (currShape === shape) {
         return;
     }
-    const header = document.getElementById("header");
-    const squareButton = document.getElementById("square");
-    const circleButton = document.getElementById("circle");
-    const starButton = document.getElementById("star");
     squareButton.innerHTML = "&#128927;";
     circleButton.innerHTML = "&#128901;";
     starButton.innerHTML = "&#128949;";
-    if (shape === 1) {
+    if (shape == 1) {
         go("musicBox");
         squareButton.innerHTML = "&#128915;";
         header.innerText = "Music Box";
-        currShape = shape;
-    } else if (shape === 2) {
+    } else if (shape == 2) {
         go("musicBall");
         circleButton.innerHTML = "&#128905;";
         header.innerText = "Music Ball";
-        currShape = shape;
     } else {
         go("musicStar");
         starButton.innerHTML = "&#128954;";
         header.innerText = "Music Star";
-        currShape = shape;
     }
-}
-
-// Initialize Tone
-function startAudio() {
-    Tone.start();
-    document.getElementById("audioButton").classList.add("hide");
+    currShape = shape;
 }
 
 // Align percentages to a specific scale exponentially
-function expRangeAdjust(min, max, percentage) {
-    return min + Math.pow(percentage, 2) * (max - min);
+function eScale(min, max, percent) {
+    return min + Math.pow(percent, 2) * (max - min);
 }
 
 // Align percentages to a specific scale linearly
-function linearRangeAdjust(min, max, percentage) {
-    return min + percentage * (max - min);
+function lScale(min, max, percent) {
+    return min + percent * (max - min);
 }
 
 // Restrict values to a min and max
@@ -63,82 +69,17 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(value, min));
 }
 
-// Center height and width values
-const cWidth = width() / 2;
-const cHeight = height() / 2;
-
 //
 // Music Box
 //
 scene("musicBox", () => {
+    const {x: cWidth, y: cHeight} = center();
 
-    // Initialize Effects
-    const reverbMin = 0.001;
-    const reverbMax = 0.99;
-    const reverb = new Tone.Reverb({
-        wet: 0.7,
-        roomSize: 2,
-        preDelay: 0.1,
-        decay: 8,
-    }).toDestination();
-
-    const filterMin = 300;
-    const filterMax = 12000;
-    const filter = new Tone.Filter({
-        type: "lowpass",
-        frequency: 12000,
-    }).connect(reverb);
-
-    const delayMin = 0.001;
-    const delayMax = 0.99;
-    const delay = new Tone.PingPongDelay({
-        delayTime: "4n",
-        feedback: 0.6,
-        wet: 0.7,
-    }).connect(filter);
-
-    const distortion = new Tone.Distortion({
-        distortion: 0.3,
-    }).connect(filter);
-
-    // Initialize synths
-    const highSynth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: "sin",
-        volume: -16,
-        maxPolyphony: 4,
-        debug: false,
-        envelope: {
-            attack: 0.01,
-            decay: 0.5,
-            sustain: 0.1,
-            release: 0.3,
-        },
-    }).connect(delay);
-
-    const lowSynth = new Tone.Synth({
-        oscillator: "sawtooth",
-        volume: -20,
-        debug: false,
-        envelope: {
-            attack: 0.3,
-            decay: 0.7,
-            sustain: 0.12,
-            release: 1,
-        },
-    }).connect(distortion);
-
-    // Playable pitches for each note duration
-    const shortPitches = [ 
-        "B3", 
-        "C4", "D4", "E4", "G4", "B4",
-        "D5", "E5", "F#5", "G5", "A5", "B5", 
-        "D6", "E6", "F#6", "A6",
-    ];
-    const longPitches = [
-        "C2", "G2", 
-        "C3", "E3", "G3", 
-        "C4",
-    ];
+    // Display html content after loading
+    onLoad(() => {
+        header.classList.remove("hide");
+        buttonDiv.classList.remove("hide");
+    });
 
     // Load notation sprites
     const notation = [
@@ -154,21 +95,23 @@ scene("musicBox", () => {
     });
 
     // Black center box
-    const musicBoxSize = width() > height() ? width() / 8 : height() / 8;
-    const boxHalf = musicBoxSize / 2;
-    const boxLeft = cWidth - boxHalf;
-    const boxRight = cWidth + boxHalf;
-    const boxTop = cHeight - boxHalf;
-    const boxBottom = cHeight + boxHalf;
-    const musicBox = add([
-        rect(musicBoxSize, musicBoxSize),
+    const boxSize = Math.max(width() / 8, height() / 8);
+    const boxHalf = boxSize / 2;
+    const boxSides = {
+        left: cWidth - boxHalf,
+        right: cWidth + boxHalf,
+        top: cHeight - boxHalf,
+        bottom: cHeight + boxHalf,
+    };
+    const box = add([
+        rect(boxSize, boxSize),
         anchor("center"),
         pos(center()),
-        color(0, 0, 0),
+        color(BLACK),
         area(),
         "musicBox"
     ]);
-    musicBox.onCollide("note", (note) => {
+    box.onCollide("note", (note) => {
         playNote(note.dur);
     });
 
@@ -177,59 +120,116 @@ scene("musicBox", () => {
         rect(1, height()),
         pos(-30, 0),
         area(),
-        color(0, 0, 0)
+        color(BLACK),
     ]);
     leftBound.onCollide("note", (note) => {
         destroy(note);
     });
 
+    // Sliders
+    const sliderParams = {
+        rate: 0.5,
+        freq: 0.7,
+        verb: 0.7,
+        delay: 0.7,
+    };
+    const slider = {
+        left: cWidth - (boxSize / 1.5) / 2,
+        right: cWidth + (boxSize / 1.5) / 2,
+        yStart: height() - height() / 5,
+    };
+    slider.range = slider.right - slider.left;
+
+    Object.entries(sliderParams).forEach(([name, percent], i) => {
+        add([
+            rect(boxSize / 1.5, 2),
+            color(BLACK),
+            anchor("center"),
+            pos(cWidth, slider.yStart + 30 * i),
+        ]);
+
+        const sliderBox = add([
+            rect(boxSize / 1.5 / 8, 15),
+            color(BLACK),
+            anchor("center"),
+            pos(slider.left + percent * slider.range, slider.yStart + 30 * i),
+            area(),
+            sliderDrag(),
+            "slider",
+            `${name}`
+        ]);
+        sliderBox.onHover(() => {
+            setCursor("move");
+        });
+    });
+
     // Recursively spawn notes based on slider values
-    const lowSpawnMin = 0.05;
-    const lowSpawnMax = 1;
-    const highSpawnMin = 0.1;
-    const highSpawnMax = 2;
-    let minWait = expRangeAdjust(lowSpawnMin, lowSpawnMax, 0.5);
-    let maxWait = expRangeAdjust(highSpawnMin, highSpawnMax, 0.5)
+    const rate = {
+        l: {
+            min: 0.05,
+            max: 1,
+        },
+        u: {
+            min: 0.1,
+            max: 2,
+        },
+    };
+    rate.lVal = eScale(rate.l.min, rate.l.max, 0.5);
+    rate.uVal = eScale(rate.u.min, rate.u.max, 0.5);
 
-    const yOffsetMin = 10;
-    const yOffsetMax = cHeight - 10;
-    let yOffset = expRangeAdjust(yOffsetMin, yOffsetMax, 0.7);
+    const offset = {
+        min: 10,
+        max: cHeight - 10,
+    };
+    offset.val = eScale(offset.min, offset.max, 0.7);
 
-    const lowScaleMin = 0.015;
-    const lowScaleMax = 0.027;
-    const highScaleMin = 0.025;
-    const highScaleMax = 0.046;
-    let minScale = expRangeAdjust(lowScaleMin, lowScaleMax, 0.3);
-    let maxScale = expRangeAdjust(highScaleMin, highScaleMax, 0.3);
+    const size = {
+        l: {
+            min: 0.015,
+            max: 0.027,
+        },
+        u: {
+            min: 0.025,
+            max: 0.046,
+        },
+    };
+    size.lVal = eScale(size.l.min, size.l.max, 0.7);
+    size.uVal = eScale(size.u.min, size.u.max, 0.7);
 
-    const lowRotMin = -110;
-    const lowRotMax = -25;
-    const highRotMin = -55;
-    const highRotMax = 25;
-    let minRot = -25;
-    let maxRot = 25;
+    const angle = {
+        l: {
+            min: -110,
+            max: -25,
+        },
+        u: {
+            min: -55,
+            max: 25,
+        },
+        lVal: -25,
+        uVal: 25,
+    };
 
     const xPos = width() + 30;
     function spawnNote() {
         const noteType = choose(notation);
         const duration = Number(noteType.substring(0, noteType.length - 2));
         const speed = rand(20, 31) * duration;
-        const yPos = rand(cHeight - yOffset, cHeight + yOffset + 1);
+        const yPos = rand(cHeight - offset.val, cHeight + offset.val + 1);
 
         add([
             pos(xPos, yPos),
             sprite(noteType),
             anchor("center"),
-            scale(rand(minScale, maxScale)),
-            rotate(rand(minRot, maxRot)),
+            scale(rand(size.lVal, size.uVal)),
+            rotate(rand(angle.lVal, angle.uVal)),
             area(),
-            move(musicBox.pos.angle(xPos, yPos), speed),
+            move(box.pos.angle(xPos, yPos), speed),
             "note",
             {
                 dur: duration,
             },
         ]);
-        wait(rand(minWait, maxWait), spawnNote);
+        wait(rand(rate.lVal, rate.uVal), spawnNote);
     }
     spawnNote();
 
@@ -241,121 +241,82 @@ scene("musicBox", () => {
             rect(rectSize, rectSize),
             anchor("center"),
             pos(
-                rand(boxLeft + rectHalf + 2, boxRight - rectHalf - 2),
-                rand(boxTop + rectHalf + 2, boxBottom - rectHalf - 2),
+                rand(boxSides.left + rectHalf + 2, boxSides.right - rectHalf - 2),
+                rand(boxSides.top + rectHalf + 2, boxSides.bottom - rectHalf - 2),
             ),
             lifespan(1 / (duration + 1) + 0.1),
             z(1),
-            color(255, 255, 255),
-            outline(1, (0, 0, 0)),
+            color(WHITE),
+            outline(1, BLACK),
         ]);
 
         if (Tone.context.state === "running") {
             if (duration < 4) {
-                lowSynth.triggerAttackRelease(choose(longPitches), `${duration}n`);
+                boxSynth.lowSynth.triggerAttackRelease(choose(boxSynth.lowPitches), `${duration}n`);
             } else {
-                highSynth.triggerAttackRelease(choose(shortPitches), `${duration}n`);
+                boxSynth.highSynth.triggerAttackRelease(choose(boxSynth.lowPitches), `${duration}n`);
             }
         }
     }
 
-    // Slider slides
-    const sliderLeftEdge = cWidth - (musicBoxSize / 1.5) / 2;
-    const sliderRightEdge = cWidth + (musicBoxSize / 1.5) / 2;
-    const sliderRange = sliderRightEdge - sliderLeftEdge;
-    const sliderStartY = height() - height() / 5;
-
-    for (let i = 0; i < 4; i++) {
-        add([
-            rect(musicBoxSize / 1.5, 2),
-            color(0, 0, 0),
-            anchor("center"),
-            pos(cWidth, sliderStartY + 30 * i),
-        ]);
-    }
-
-    // Spawn slider boxes
-    const sliderParams = [
-        {type: "rate", initPerc: 0.5},
-        {type: "freq", initPerc: 0.7},
-        {type: "verb", initPerc: 0.7},
-        {type: "delay", initPerc: 0.7},
-    ];
-    for (let i = 0; i < sliderParams.length; i++) {
-        const sliderBox = add([
-            rect(musicBoxSize / 1.5 / 8, 15),
-            color(0, 0, 0),
-            anchor("center"),
-            pos(sliderLeftEdge + sliderParams[i].initPerc * sliderRange, sliderStartY + 30 * i),
-            area(),
-            sliderDrag(),
-            "slider",
-            `${sliderParams[i].type}`
-        ]);
-        sliderBox.onHover(() => {
-            setCursor("move");
-        });
-    }
-
     // Handle slider box drag
-    let curDraggin = null;
+    let currDrag = null;
     function sliderDrag() {
         let xOffset = 0;
         return {
             id: "drag",
             require: ["pos", "area"],
             pick() {
-                curDraggin = this;
+                currDrag = this;
                 xOffset = mousePos().x - this.pos.x;
             },
             update() {
-                if (curDraggin === this) {
-                    const newXPos = clamp(mousePos().x - xOffset, sliderLeftEdge, sliderRightEdge);
-                    const perc = (newXPos - sliderLeftEdge) / sliderRange;
-                    this.pos.x = newXPos;
+                if (currDrag !== this) {
+                    return;
+                }
+                const newXPos = clamp(mousePos().x - xOffset, slider.left, slider.right);
+                const perc = (newXPos - slider.left) / slider.range;
+                this.pos.x = newXPos;
 
-                    if (this.is("rate")) {
-                        minWait = expRangeAdjust(lowSpawnMin, lowSpawnMax, 1 - perc);
-                        maxWait = expRangeAdjust(highSpawnMin, highSpawnMax, 1 - perc);
-                    } else if (this.is("freq")) {
-                        const newFreq = expRangeAdjust(filterMin, filterMax, perc);
-                        filter.frequency.rampTo(newFreq, 0.1);
-                        if (perc < 0.5) {
-                            minRot = expRangeAdjust(lowRotMin, lowRotMax, perc);
-                            maxRot = expRangeAdjust(highRotMin, highRotMax, perc);
-                        } else {
-                            minRot = -25;
-                            maxRot = 25;
-                        }
-                    } else if (this.is("verb")) {
-                        reverb.wet.value = expRangeAdjust(reverbMin, reverbMax, perc);
-                        minScale = expRangeAdjust(lowScaleMin, lowScaleMax, 1 - perc);
-                        maxScale = expRangeAdjust(highScaleMin, highScaleMax, 1 - perc);
-                    } else {
-                        delay.wet.value = expRangeAdjust(delayMin, delayMax, perc);
-                        yOffset = expRangeAdjust(yOffsetMin, yOffsetMax, perc);
+                if (this.is("rate")) {
+                    rate.lVal = eScale(rate.l.min, rate.l.max, 1 - perc);
+                    rate.uVal = eScale(rate.u.min, rate.u.max, 1 - perc);
+                } else if (this.is("freq")) {
+                    const newFreq = eScale(boxSynth.filter.min, boxSynth.filter.max, perc);
+                    boxSynth.filter.e.frequency.rampTo(newFreq, 0.1);
+                    if (perc <= 0.6) {
+                        const newPerc = map(perc, 0, 0.6, 0, 1);
+                        angle.lVal = lScale(angle.l.min, angle.l.max, newPerc);
+                        angle.uVal = lScale(angle.u.min, angle.u.max, newPerc);
                     }
+                } else if (this.is("verb")) {
+                    boxSynth.reverb.e.wet.value = eScale(boxSynth.reverb.min, boxSynth.reverb.max, perc);
+                    size.lVal = eScale(size.l.min, size.l.max, 1 - perc);
+                    size.uVal = eScale(size.u.min, size.u.max, 1 - perc);
+                } else {
+                    boxSynth.delay.e.wet.value = eScale(boxSynth.delay.min, boxSynth.delay.max, perc);
+                    offset.val = eScale(offset.min, offset.max, perc);
                 }
             },
         }
     }
 
-    // Grab slider to drag if hovered
+    // Pick dragged objects
     onMousePress(() => {
-        if (!curDraggin) {
+        if (!currDrag) {
             for (const obj of get("slider")) {
                 if (obj.isHovering()) {
                     obj.pick();
-                    break;
+                    return;
                 }
             }
         }
     });
 
-    // Drop slider on mouse release
+    // Drop dragged objects
     onMouseRelease(() => {
-        if (curDraggin) {
-            curDraggin = null;
+        if (currDrag) {
+            currDrag = null;
             setCursor("default");
         }
     });
@@ -365,54 +326,64 @@ scene("musicBox", () => {
 // Music Ball
 //
 scene("musicBall", () => {
+    const {x: cWidth, y: cHeight} = center();
+
+    // Resize elements on screen size change
+    onResize(() => {
+        go("musicBall");
+    });
+
     // Black center circle
-    const musicBallRadius = width() > height() ? width() / 16 : height() / 16;
-    add([
-        circle(musicBallRadius),
+    const ball = add([
+        circle(Math.max(width() / 16, height() / 16)),
         anchor("center"),
         pos(center()),
-        color(0, 0, 0),
+        color(BLACK),
         area(),
-        "musicBall"
+        "musicBall",
     ]);
 
     // Knobs
     loadSprite("knob", `./knobs/knob.png`);
-    const knobSpriteHeightpx = 605;
-    const knobWidthBasedDiameter = width() / 3 / 5;
-    const knobDiameter = width() > height() * 1.3 ? knobWidthBasedDiameter : musicBallRadius * 2;
-    const knobScaleVal = knobDiameter / knobSpriteHeightpx;
-    const knobStartx = cWidth - knobDiameter / 8 - knobDiameter - knobDiameter / 4 - knobDiameter / 2;
-    const knobStarty = height() - knobDiameter;
+    const knobParams = {
+        pitch: 0,
+        freq: 0.7,
+        distortion: 0.3,
+        bit: 0.2,
+        verb: 0.3,
+        volume: 1,
+    };
+    const numParams = Object.keys(knobParams).length;
+    const knob = {
+        spriteDiameter: 605,
+    };
+    knob.diameter = Math.min(width() / (numParams * 1.5), (cHeight - ball.radius) / 2.5);
+    knob.scale = knob.diameter / knob.spriteDiameter;
+    knob.y = height() - knob.diameter;
+    knob.xStart = cWidth - knob.diameter * 3 - knob.diameter / 8;
 
-    const knobParams = [
-        {type: "pitch", initPerc: 0},
-        {type: "freq", initPerc: 0.7},
-        {type: "distortion", initPerc: 0.3},
-        {type: "bit", initPerc: 0.2},
-    ];
-    for (let i = 0; i < knobParams.length; i++) {
-        const knob = add([
+    Object.entries(knobParams).forEach(([name, percent], i) => {
+        const k = add([
             sprite("knob"),
             anchor("center"),
-            pos(knobStartx + (knobDiameter + knobDiameter / 4) * i, knobStarty),
-            rotate(linearRangeAdjust(-120, 120, knobParams[i].initPerc)),
-            scale(knobScaleVal),
+            pos(knob.xStart + knob.diameter * 1.25 * i, knob.y),
+            rotate(lScale(-120, 120, percent)),
+            scale(knob.scale),
             knobDrag(),
             area(),
             {
-                yOffset: linearRangeAdjust(-120, 120, knobParams[i].initPerc),
+                yOffset: lScale(-120, 120, percent),
             },
             "knob",
-            `${knobParams[i].type}`,
+            `${name}`,
         ]);
-        knob.onHover(() => {
+        k.onHover(() => {
             setCursor("move");
         });
-    }
+    });
 
     // Handle knob rotation
-    let curDraggin = null;
+    let currDrag = null;
     const sensitivity = 3;
     function knobDrag() {
         let yOffset = 0;
@@ -420,35 +391,36 @@ scene("musicBall", () => {
             id: "drag",
             require: ["pos", "area"],
             pick() {
-                curDraggin = this;
+                currDrag = this;
                 yOffset = -(mousePos().y * sensitivity) - this.yOffset;
             },
             update() {
-                if (curDraggin === this) {
-                    const newAngle = clamp(-(mousePos().y * sensitivity) - yOffset, -120, 120);
-                    this.angle = newAngle;
-                    this.yOffset = newAngle;
+                if (currDrag !== this) {
+                    return;
                 }
+                const newAngle = clamp(-(mousePos().y * sensitivity) - yOffset, -120, 120);
+                this.angle = newAngle;
+                this.yOffset = newAngle;
             },
         }
     }
 
-    // Grab knob to turn if hovered
+    // Pick dragged objects
     onMousePress(() => {
-        if (!curDraggin) {
+        if (!currDrag) {
             for (const obj of get("knob")) {
                 if (obj.isHovering()) {
                     obj.pick();
-                    break;
+                    return;
                 }
             }
         }
     });
 
-    // Drop knob on mouse release
+    // Drop dragged objects
     onMouseRelease(() => {
-        if (curDraggin) {
-            curDraggin = null;
+        if (currDrag) {
+            currDrag = null;
             setCursor("default");
         }
     });
@@ -458,6 +430,13 @@ scene("musicBall", () => {
 // Music Star
 //
 scene("musicStar", () => {
+    const {x: cWidth, y: cHeight} = center();
+
+    // Resize elements on screen size change
+    onResize(() => {
+        go("musicStar");
+    });
+
     // Draw a 6 pointed asterisk
     function drawStar(size, xPos, yPos) {
         const starWeight = size / 6;
@@ -466,7 +445,7 @@ scene("musicStar", () => {
                 anchor("center"),
                 rect(starWeight, size),
                 pos(xPos, yPos),
-                color(0, 0, 0),
+                color(BLACK),
                 rotate(angle),
             ]);
         }
