@@ -48,7 +48,7 @@ const lowSynth = new Tone.Synth({
     oscillator: {
         type: "triangle",
     },
-    volume: 4,
+    volume: -14,
     debug: false,
     envelope: {
         attack: 0.3,
@@ -58,8 +58,7 @@ const lowSynth = new Tone.Synth({
     },
 }).connect(distortion);
 const lowPitches = [
-    "C1", "G1",
-    "C2", "G2", 
+    "C2", "F2", "G2", "A2", 
     "C3", "E3", "G3", 
     "C4",
 ];
@@ -84,6 +83,11 @@ export const boxSynth = {
         min: 0.001,
         max: 0.99,
     },
+    reset: () => {
+        filter.frequency.rampTo(12000, 0.1);
+        reverb.wet.value = 0.7;
+        delay.wet.value = 0.7;
+    },
 }
 
 //
@@ -102,7 +106,7 @@ const filter2 = new Tone.Filter({
 }).connect(reverb2);
 
 const distortion2 = new Tone.Distortion({
-    distortion: 0.3,
+    distortion: 0.01,
 }).connect(filter2);
 
 const vibrato = new Tone.Vibrato({
@@ -154,7 +158,7 @@ export const ballSynth = {
         minFreq: 1,
         maxFreq: 100,
         minDepth: 0.1,
-        maxDepth: 1,
+        maxDepth: 0.6,
     },
     filter: {
         e: filter2,

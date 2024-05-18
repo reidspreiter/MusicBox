@@ -33,6 +33,7 @@ function changeShape(shape) {
         if (currShape == 1) {
             boxSynth.highSynth.triggerRelease();
             boxSynth.lowSynth.triggerRelease();
+            boxSynth.reset();
         } else if (currShape == 2) {
             ballSynth.synth.stop();
         }
@@ -346,10 +347,9 @@ scene("musicBall", () => {
         buttonDiv.classList.remove("hide");
     });
 
-    // Resize elements on screen size change
-    onResize(() => {
-        go("musicBall");
-    });
+    if (Tone.context.state === "running") {
+        ballSynth.synth.start();
+    }
 
     // Black center circle
     const ball = add([
@@ -357,23 +357,22 @@ scene("musicBall", () => {
         anchor("center"),
         pos(center()),
         color(BLACK),
-        area(),
         "musicBall",
     ]);
 
     // Knobs
-    loadSprite("knob", `./knobs/knob.png`);
+    loadSprite("knob", `./misc/knob.svg`);
     const knobParams = {
         pitch: 0,
-        freq: 0.7,
-        dist: 0.3,
+        freq: 0.8,
+        dist: 0,
         vib: 0.1,
         verb: 0.5,
         vol: 0.95,
     };
     const numParams = Object.keys(knobParams).length;
     const knob = {
-        spriteDiameter: 605,
+        spriteDiameter: 617,
         min: -120,
         max: 120,
     };
@@ -391,6 +390,7 @@ scene("musicBall", () => {
             scale(knob.scale),
             knobDrag(),
             area(),
+            z(2),
             {
                 yOffset: lScale(knob.min, knob.max, percent),
             },
@@ -402,12 +402,86 @@ scene("musicBall", () => {
         });
     });
 
-    if (Tone.context.state === "running") {
-        ballSynth.synth.start();
+    // Spawn rotating ball sprites
+    loadSprite("ball", "./misc/ball.svg");
+    const ballSprite = {
+        spriteDiameter: 1200,
+        diameter: ball.radius,
+    };
+    ballSprite.scale = ballSprite.diameter / ballSprite.spriteDiameter;
+
+    const size = {
+        min: ballSprite.scale / 10,
+        max: ballSprite.scale,
+    };
+    size.val = lScale(size.min, size.max, knobParams.vol);
+
+    const radius = {
+        min: ball.radius + ballSprite.diameter / 1.5,
+        max: Math.min(cHeight, cWidth),
+    };
+    radius.val = lScale(radius.min, radius.max, knobParams.verb);
+
+    const oblong = {
+        min: 0,
+        max: radius.val - ball.radius / 2,
     }
+    oblong.val = lScale(oblong.min, oblong.max, 1 - knobParams.freq);
+
+    const speed = {
+        min: 1,
+        max: 60,
+    };
+    speed.val = lScale(speed.min, speed.max, knobParams.pitch);
+
+    const deviation = {
+        min: 0, 
+        max: ballSprite.diameter * 2,
+    };
+    deviation.val = eScale(deviation.min, deviation.max, knobParams.dist);
+
+    const rotation = {
+        min: 40,
+        max: 2000,
+    };
+    rotation.val = lScale(rotation.min, rotation.max, knobParams.vib);
+
+    for (let i = 0; i < 4; i++) {
+        add([
+            sprite("ball"),
+            anchor("center"),
+            pos(center().add(Vec2.fromAngle(90 * i).scale(radius.val))),
+            opacity(opacity.val),
+            scale(size.val),
+            rotate(0),
+            z(1),
+            {
+                startAngle: (90 * i) * (Math.PI / 180),
+            },
+            "ballSprite"
+        ]);
+    }
+
+    // Orbit and rotate each sprite
+    onUpdate("ballSprite", (ballSprite) => {
+        const angle = (time() * speed.val) + ballSprite.startAngle;
+        const xPos = cWidth + radius.val * Math.cos(angle);
+        const yPos = cHeight + (radius.val - oblong.val) * Math.sin(angle);
+
+        if (ballSprite.pos.y < cHeight) {
+            ballSprite.z = -1;
+        } else {
+            ballSprite.z = 1;
+        }
+
+        ballSprite.pos.x = xPos + rand(-deviation.val, deviation.val);
+        ballSprite.pos.y = yPos + rand(-deviation.val, deviation.val);
+        ballSprite.angle += rotation.val * dt();
+    });
 
     // Handle knob rotation
     let currDrag = null;
+    let currOblongPerc = knobParams.freq;
     const sensitivity = 3;
     function knobDrag() {
         let yOffset = 0;
@@ -429,18 +503,31 @@ scene("musicBall", () => {
 
                 if (this.is("pitch")) {
                     ballSynth.pitcher.e.pitch = lScale(ballSynth.pitcher.min, ballSynth.pitcher.max, perc);
+                    speed.val = lScale(speed.min, speed.max, perc);
                 } else if (this.is("freq")) {
                     const newFreq = eScale(ballSynth.filter.min, ballSynth.filter.max, perc);
                     ballSynth.filter.e.frequency.rampTo(newFreq, 0.1);
+                    currOblongPerc = 1 - perc;
+                    oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
                 } else if (this.is("dist")) {
                     ballSynth.distortion.e.distortion = lScale(ballSynth.distortion.min, ballSynth.distortion.max, perc);
+                    deviation.val = eScale(deviation.min, deviation.max, perc);
                 } else if (this.is("vib")) {
                     ballSynth.vibrato.e.frequency.value = eScale(ballSynth.vibrato.minFreq, ballSynth.vibrato.maxFreq, perc);
                     ballSynth.vibrato.e.depth.value = eScale(ballSynth.vibrato.minDepth, ballSynth.vibrato.maxDepth, perc);
+                    rotation.val = lScale(rotation.min, rotation.max, perc);
                 } else if (this.is("verb")) {
                     ballSynth.reverb.e.wet.value = eScale(ballSynth.reverb.min, ballSynth.reverb.max, perc);
+                    radius.val = lScale(radius.min, radius.max, perc);
+                    oblong.max = radius.val - ball.radius / 2;
+                    oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
                 } else {
                     ballSynth.synth.e.volume.value = lScale(ballSynth.synth.minVol, ballSynth.synth.maxVol, perc);
+                    const newScale = lScale(size.min, size.max, perc);
+                    const balls = get("ballSprite");
+                    balls.forEach(orbitingBall => {
+                        orbitingBall.scale = newScale;
+                    });
                 }
             },
         }
