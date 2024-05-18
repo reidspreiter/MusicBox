@@ -481,7 +481,7 @@ scene("musicBall", () => {
 
     // Handle knob rotation
     let currDrag = null;
-    let currOblongPerc = knobParams.freq;
+    let currOblongPerc = 1 - knobParams.freq;
     const sensitivity = 3;
     function knobDrag() {
         let yOffset = 0;
