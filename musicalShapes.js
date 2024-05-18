@@ -15,7 +15,7 @@ kaboom({
 });
 
 // Manage shape select buttons
-let currShape = 2;
+let currShape = 1;
 const squareButton = document.getElementById("square");
 const circleButton = document.getElementById("circle");
 const starButton = document.getElementById("star");
@@ -497,4 +497,4 @@ scene("musicStar", () => {
     drawStar(musicStarSize, width() / 2, height() / 2);
 });
 
-go("musicBall");
+go("musicBox");
