@@ -3,9 +3,9 @@
 //
 const reverb = new Tone.Reverb({
     wet: 0.7,
-    roomSize: 2,
+    roomSize: 8,
     preDelay: 0.1,
-    decay: 8,
+    decay: 16,
 }).toDestination();
 
 const filter = new Tone.Filter({
@@ -24,7 +24,9 @@ const distortion = new Tone.Distortion({
 }).connect(filter);
 
 const highSynth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: "sin",
+    oscillator: {
+        type: "sine",
+    },
     volume: -16,
     maxPolyphony: 4,
     debug: false,
@@ -43,8 +45,10 @@ const highPitches = [
 ];
 
 const lowSynth = new Tone.Synth({
-    oscillator: "sawtooth",
-    volume: -20,
+    oscillator: {
+        type: "triangle",
+    },
+    volume: 4,
     debug: false,
     envelope: {
         attack: 0.3,
@@ -54,6 +58,7 @@ const lowSynth = new Tone.Synth({
     },
 }).connect(distortion);
 const lowPitches = [
+    "C1", "G1",
     "C2", "G2", 
     "C3", "E3", "G3", 
     "C4",
@@ -71,11 +76,98 @@ export const boxSynth = {
     },
     filter: {
         e: filter,
-        min: 300,
+        min: 180,
         max: 12000,
     },
     reverb: {
         e: reverb,
+        min: 0.001,
+        max: 0.99,
+    },
+}
+
+//
+// Music ball synths and effects
+//
+const reverb2 = new Tone.Reverb({
+    wet: 0.5,
+    roomSize: 8,
+    preDelay: 0.1,
+    decay: 16,
+}).toDestination();
+
+const filter2 = new Tone.Filter({
+    type: "lowpass",
+    frequency: 12000,
+}).connect(reverb2);
+
+const distortion2 = new Tone.Distortion({
+    distortion: 0.3,
+}).connect(filter2);
+
+const vibrato = new Tone.Vibrato({
+    frequency: 5,
+    depth: 0.1,
+}).connect(distortion2);
+
+const pitcher = new Tone.PitchShift({
+    pitch: 0,
+    windowSize: 1,
+    delayTime: 0,
+}).connect(vibrato);
+
+const powerSynth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: {
+        type: "sawtooth4",
+    },
+    volume: -8,
+    maxPolyphony: 4,
+    debug: false,
+    envelope: {
+        attack: 1,
+        decay: 0.1,
+        sustain: 0.3,
+        release: 1,
+    },
+}).connect(pitcher);
+
+export const ballSynth = {
+    synth: {
+        e: powerSynth,
+        minVol: -38,
+        maxVol: 0,
+        start: () => {
+            powerSynth.triggerAttack(["F2", "C3", "A3", "E4"]);
+            powerSynth.trigger
+        },
+        stop: () => {
+            powerSynth.triggerRelease(["F2", "C3", "A3", "E4"]);
+        },
+    },
+    pitcher: {
+        e: pitcher,
+        min: 0,
+        max: 43,
+    },
+    vibrato: {
+        e: vibrato,
+        minFreq: 1,
+        maxFreq: 100,
+        minDepth: 0.1,
+        maxDepth: 1,
+    },
+    filter: {
+        e: filter2,
+        min: 200,
+        max: 14000,
+    },
+    distortion: {
+        e: distortion2,
+        min: 0.01,
+        max: 1,
+    },
+    reverb: {
+        e: reverb2,
         min: 0.001,
         max: 0.99,
     },

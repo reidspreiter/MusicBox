@@ -1,4 +1,4 @@
-import { boxSynth } from './synths.js';
+import { boxSynth, ballSynth } from './synths.js';
 
 // Remove enable audio button if already enabled
 const audioButton = document.getElementById("audioButton");
@@ -8,12 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Initialize Tone.js
-audioButton.addEventListener("click", () => {
-    Tone.start();
-    audioButton.classList.add("hide");
-});
-
 // Initialize Kaboom
 kaboom({
     canvas: document.getElementById("homeCanvas"), 
@@ -21,7 +15,7 @@ kaboom({
 });
 
 // Manage shape select buttons
-let currShape = 1;
+let currShape = 2;
 const squareButton = document.getElementById("square");
 const circleButton = document.getElementById("circle");
 const starButton = document.getElementById("star");
@@ -35,6 +29,15 @@ function changeShape(shape) {
     if (currShape === shape) {
         return;
     }
+    if (Tone.context.state === "running") {
+        if (currShape == 1) {
+            boxSynth.highSynth.triggerRelease();
+            boxSynth.lowSynth.triggerRelease();
+        } else if (currShape == 2) {
+            ballSynth.synth.stop();
+        }
+    }
+    
     squareButton.innerHTML = "&#128927;";
     circleButton.innerHTML = "&#128901;";
     starButton.innerHTML = "&#128949;";
@@ -54,6 +57,16 @@ function changeShape(shape) {
     currShape = shape;
 }
 
+// Initialize Tone.js
+audioButton.addEventListener("click", () => {
+    Tone.start();
+    audioButton.classList.add("hide");
+
+    if (currShape == 2) {
+        ballSynth.synth.start();
+    }
+});
+
 // Align percentages to a specific scale exponentially
 function eScale(min, max, percent) {
     return min + Math.pow(percent, 2) * (max - min);
@@ -67,6 +80,11 @@ function lScale(min, max, percent) {
 // Restrict values to a min and max
 function clamp(value, min, max) {
     return Math.min(max, Math.max(value, min));
+}
+
+// Calculate percentage of range
+function percify(value, min, max) {
+    return (value - min) / (max - min);
 }
 
 //
@@ -133,26 +151,21 @@ scene("musicBox", () => {
         verb: 0.7,
         delay: 0.7,
     };
-    const slider = {
-        left: cWidth - (boxSize / 1.5) / 2,
-        right: cWidth + (boxSize / 1.5) / 2,
-        yStart: height() - height() / 5,
-    };
-    slider.range = slider.right - slider.left;
+    const yStart = height() - height() / 5;
 
     Object.entries(sliderParams).forEach(([name, percent], i) => {
         add([
-            rect(boxSize / 1.5, 2),
+            rect(boxSize, 2),
             color(BLACK),
             anchor("center"),
-            pos(cWidth, slider.yStart + 30 * i),
+            pos(cWidth, yStart + 30 * i),
         ]);
 
         const sliderBox = add([
-            rect(boxSize / 1.5 / 8, 15),
+            rect(boxSize / 8, 15),
             color(BLACK),
             anchor("center"),
-            pos(slider.left + percent * slider.range, slider.yStart + 30 * i),
+            pos(boxSides.left + percent * boxSize, yStart + 30 * i),
             area(),
             sliderDrag(),
             "slider",
@@ -245,7 +258,6 @@ scene("musicBox", () => {
                 rand(boxSides.top + rectHalf + 2, boxSides.bottom - rectHalf - 2),
             ),
             lifespan(1 / (duration + 1) + 0.1),
-            z(1),
             color(WHITE),
             outline(1, BLACK),
         ]);
@@ -254,7 +266,7 @@ scene("musicBox", () => {
             if (duration < 4) {
                 boxSynth.lowSynth.triggerAttackRelease(choose(boxSynth.lowPitches), `${duration}n`);
             } else {
-                boxSynth.highSynth.triggerAttackRelease(choose(boxSynth.lowPitches), `${duration}n`);
+                boxSynth.highSynth.triggerAttackRelease(choose(boxSynth.highPitches), `${duration}n`);
             }
         }
     }
@@ -274,8 +286,8 @@ scene("musicBox", () => {
                 if (currDrag !== this) {
                     return;
                 }
-                const newXPos = clamp(mousePos().x - xOffset, slider.left, slider.right);
-                const perc = (newXPos - slider.left) / slider.range;
+                const newXPos = clamp(mousePos().x - xOffset, boxSides.left, boxSides.right);
+                const perc = (newXPos - boxSides.left) / boxSize;
                 this.pos.x = newXPos;
 
                 if (this.is("rate")) {
@@ -328,6 +340,12 @@ scene("musicBox", () => {
 scene("musicBall", () => {
     const {x: cWidth, y: cHeight} = center();
 
+    // Display html content after loading
+    onLoad(() => {
+        header.classList.remove("hide");
+        buttonDiv.classList.remove("hide");
+    });
+
     // Resize elements on screen size change
     onResize(() => {
         go("musicBall");
@@ -348,14 +366,16 @@ scene("musicBall", () => {
     const knobParams = {
         pitch: 0,
         freq: 0.7,
-        distortion: 0.3,
-        bit: 0.2,
-        verb: 0.3,
-        volume: 1,
+        dist: 0.3,
+        vib: 0.1,
+        verb: 0.5,
+        vol: 0.95,
     };
     const numParams = Object.keys(knobParams).length;
     const knob = {
         spriteDiameter: 605,
+        min: -120,
+        max: 120,
     };
     knob.diameter = Math.min(width() / (numParams * 1.5), (cHeight - ball.radius) / 2.5);
     knob.scale = knob.diameter / knob.spriteDiameter;
@@ -367,12 +387,12 @@ scene("musicBall", () => {
             sprite("knob"),
             anchor("center"),
             pos(knob.xStart + knob.diameter * 1.25 * i, knob.y),
-            rotate(lScale(-120, 120, percent)),
+            rotate(lScale(knob.min, knob.max, percent)),
             scale(knob.scale),
             knobDrag(),
             area(),
             {
-                yOffset: lScale(-120, 120, percent),
+                yOffset: lScale(knob.min, knob.max, percent),
             },
             "knob",
             `${name}`,
@@ -381,6 +401,10 @@ scene("musicBall", () => {
             setCursor("move");
         });
     });
+
+    if (Tone.context.state === "running") {
+        ballSynth.synth.start();
+    }
 
     // Handle knob rotation
     let currDrag = null;
@@ -398,9 +422,26 @@ scene("musicBall", () => {
                 if (currDrag !== this) {
                     return;
                 }
-                const newAngle = clamp(-(mousePos().y * sensitivity) - yOffset, -120, 120);
+                const newAngle = clamp(-(mousePos().y * sensitivity) - yOffset, knob.min, knob.max);
                 this.angle = newAngle;
                 this.yOffset = newAngle;
+                const perc = percify(newAngle, knob.min, knob.max);
+
+                if (this.is("pitch")) {
+                    ballSynth.pitcher.e.pitch = lScale(ballSynth.pitcher.min, ballSynth.pitcher.max, perc);
+                } else if (this.is("freq")) {
+                    const newFreq = eScale(ballSynth.filter.min, ballSynth.filter.max, perc);
+                    ballSynth.filter.e.frequency.rampTo(newFreq, 0.1);
+                } else if (this.is("dist")) {
+                    ballSynth.distortion.e.distortion = lScale(ballSynth.distortion.min, ballSynth.distortion.max, perc);
+                } else if (this.is("vib")) {
+                    ballSynth.vibrato.e.frequency.value = eScale(ballSynth.vibrato.minFreq, ballSynth.vibrato.maxFreq, perc);
+                    ballSynth.vibrato.e.depth.value = eScale(ballSynth.vibrato.minDepth, ballSynth.vibrato.maxDepth, perc);
+                } else if (this.is("verb")) {
+                    ballSynth.reverb.e.wet.value = eScale(ballSynth.reverb.min, ballSynth.reverb.max, perc);
+                } else {
+                    ballSynth.synth.e.volume.value = lScale(ballSynth.synth.minVol, ballSynth.synth.maxVol, perc);
+                }
             },
         }
     }
@@ -456,4 +497,4 @@ scene("musicStar", () => {
     drawStar(musicStarSize, width() / 2, height() / 2);
 });
 
-go("musicBox");
+go("musicBall");
