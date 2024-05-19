@@ -3,27 +3,39 @@ import { choose, eScale, lScale } from "./utils.js";
 //
 // Music box synths and effects
 //
-const reverb = new Tone.Reverb({
-    wet: 0.7,
-    roomSize: 8,
-    preDelay: 0.1,
-    decay: 16,
-}).toDestination();
+const reverb = {
+    e: new Tone.Reverb({
+        wet: 0.7,
+        roomSize: 8,
+        preDelay: 0.1,
+        decay: 16,
+    }).toDestination(),
+    min: 0.001,
+    max: 0.99,
+};
 
-const filter = new Tone.Filter({
-    type: "lowpass",
-    frequency: 12000,
-}).connect(reverb);
+const filter = {
+    e: new Tone.Filter({
+        type: "lowpass",
+        frequency: 12000,
+    }).connect(reverb.e),
+    min: 180,
+    max: 12000,
+};
 
-const delay = new Tone.PingPongDelay({
-    delayTime: "4n",
-    feedback: 0.6,
-    wet: 0.7,
-}).connect(filter);
+const delay = {
+    e: new Tone.PingPongDelay({
+        delayTime: "4n",
+        feedback: 0.6,
+        wet: 0.7,
+    }).connect(filter.e),
+    min: 0.001,
+    max: 0.99,
+};
 
 const distortion = new Tone.Distortion({
     distortion: 0.3,
-}).connect(filter);
+}).connect(filter.e);
 
 const highSynth = new Tone.PolySynth(Tone.Synth, {
     oscillator: {
@@ -38,7 +50,7 @@ const highSynth = new Tone.PolySynth(Tone.Synth, {
         sustain: 0.1,
         release: 0.3,
     },
-}).connect(delay);
+}).connect(delay.e);
 const highPitches = [ 
     "B3", 
     "C4", "D4", "E4", "G4", "B4",
@@ -66,26 +78,20 @@ const lowPitches = [
 ];
 
 export const boxSynth = {
-    delay: {
-        min: 0.001,
-        max: 0.99,
-        setWet: (val) => {
-            delay.wet.value = val;
-        },
+    params: {
+        rate: 0.5,
+        freq: 0.7,
+        verb: 0.7,
+        delay: 0.7,
     },
-    filter: {
-        min: 180,
-        max: 12000,
-        setFreq: (val) => {
-            filter.frequency.rampTo(val, 0.1);
-        },
+    setDelWet: (perc) => {
+        delay.e.wet.value = eScale(delay.min, delay.max, perc);
     },
-    reverb: {
-        min: 0.001,
-        max: 0.99,
-        setWet: (val) => {
-            reverb.wet.value = val;
-        },
+    setFreq: (perc) => {
+        filter.e.frequency.rampTo(eScale(filter.min, filter.max, perc), 0.1);
+    },
+    setVerbWet: (perc) => {
+        reverb.e.wet.value = eScale(reverb.min, reverb.max, perc);
     },
     playHigh: (duration) => {
         highSynth.triggerAttackRelease(choose(highPitches), `${duration}n`);
@@ -97,108 +103,113 @@ export const boxSynth = {
         highSynth.triggerRelease();
         lowSynth.triggerRelease();
     },
-    reset: () => {
-        filter.frequency.rampTo(12000, 0.1);
-        reverb.wet.value = 0.7;
-        delay.wet.value = 0.7;
-    },
-}
+};
 
 //
 // Music ball synths and effects
 //
-const reverb2 = new Tone.Reverb({
-    wet: 0.5,
-    roomSize: 8,
-    preDelay: 0.1,
-    decay: 16,
-}).toDestination();
+const reverb2 = {
+    e: new Tone.Reverb({
+        wet: 0.5,
+        roomSize: 8,
+        preDelay: 0.1,
+        decay: 16,
+    }).toDestination(),
+    min: 0.001,
+    max: 0.99,
+};
 
-const filter2 = new Tone.Filter({
-    type: "lowpass",
-    frequency: 12000,
-}).connect(reverb2);
+const filter2 = {
+    e: new Tone.Filter({
+        type: "lowpass",
+        frequency: 12000,
+    }).connect(reverb2.e),
+    min: 200,
+    max: 14000,
+};
 
-const distortion2 = new Tone.Distortion({
-    distortion: 0.01,
-}).connect(filter2);
+const distortion2 = {
+    e: new Tone.Distortion({
+        distortion: 0.01,
+    }).connect(filter2.e),
+    min: 0.01,
+    max: 1,
+};
 
-const vibrato = new Tone.Vibrato({
-    frequency: 5,
-    depth: 0.1,
-}).connect(distortion2);
+const vibrato = {
+    e: new Tone.Vibrato({
+        frequency: 5,
+        depth: 0.1,
+    }).connect(distortion2.e),
+    minFreq: 1,
+    maxFreq: 100,
+    minDepth: 0.1,
+    maxDepth: 0.6,
+};
 
-const pitcher = new Tone.PitchShift({
-    pitch: 0,
-    windowSize: 1,
-    delayTime: 0,
-}).connect(vibrato);
+const pitcher = {
+    e: new Tone.PitchShift({
+        pitch: 0,
+        windowSize: 1,
+        delayTime: 0,
+    }).connect(vibrato.e),
+    min: 0,
+    max: 43,
+};
 
-const powerSynth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: {
-        type: "sawtooth4",
-    },
-    volume: -8,
-    maxPolyphony: 4,
-    debug: false,
-    envelope: {
-        attack: 1,
-        decay: 0.1,
-        sustain: 0.3,
-        release: 1,
-    },
-}).connect(pitcher);
+const powerSynth = {
+    e: new Tone.PolySynth(Tone.Synth, {
+        oscillator: {
+            type: "sawtooth4",
+        },
+        volume: -8,
+        maxPolyphony: 4,
+        debug: false,
+        envelope: {
+            attack: 1,
+            decay: 0.1,
+            sustain: 0.3,
+            release: 1,
+        },
+    }).connect(pitcher.e),
+    minVol: -38,
+    maxVol: 0,
+};
 
 export const ballSynth = {
-    synth: {
-        e: powerSynth,
-        minVol: -38,
-        maxVol: 0,
+    params: {
+        pitch: 0,
+        freq: 0.8,
+        dist: 0,
+        vib: 0.1,
+        verb: 0.5,
+        vol: 0.95,
     },
-    pitcher: {
-        min: 0,
-        max: 43,
-        setPitch: (val) => {
-            pitcher.pitch = val;
-        },
+    setVol: (perc) => {
+        powerSynth.e.volume.value = lScale(powerSynth.minVol, powerSynth.maxVol, perc);
     },
-    vibrato: {
-        e: vibrato,
-        minFreq: 1,
-        maxFreq: 100,
-        minDepth: 0.1,
-        maxDepth: 0.6,
+    setPitch: (perc) => {
+        pitcher.e.pitch = lScale(pitcher.min, pitcher.max, perc);
     },
-    filter: {
-        min: 200,
-        max: 14000,
-        setFreq: (val) => {
-            filter2.frequency.rampTo(val, 0.1);
-        },
+    setVibFreq: (perc) => {
+        vibrato.e.frequency.value = eScale(vibrato.minFreq, vibrato.maxFreq, perc);
     },
-    distortion: {
-        e: distortion2,
-        min: 0.01,
-        max: 1,
+    setVibDepth: (perc) => {
+        vibrato.e.depth.value = eScale(vibrato.minDepth, vibrato.maxDepth, perc);
     },
-    reverb: {
-        e: reverb2,
-        min: 0.001,
-        max: 0.99,
+    setFreq: (perc) => {
+        filter2.e.frequency.rampTo(eScale(filter2.min, filter2.max, perc), 0.1);
+    },
+    setDist: (perc) => {
+        distortion2.e.distortion = lScale(distortion2.min, distortion2.max, perc);
+    },
+    setVerbWet: (perc) => {
+        reverb2.e.wet.value = eScale(reverb2.min, reverb2.max, perc);
     },
     start: () => {
-        powerSynth.triggerAttack(["F2", "C3", "A3", "E4"]);
+        powerSynth.e.triggerAttack(["F2", "C3", "A3", "E4"]);
     },
     stop: () => {
-        powerSynth.triggerRelease(["F2", "C3", "A3", "E4"]);
+        powerSynth.e.triggerRelease(["F2", "C3", "A3", "E4"]);
     },
-    reset: () => {
-        distortion2.distortion = 0.01;
-        powerSynth.volume.value = -8;
-        pitcher.pitch = 0;
-        vibrato.frequency.value = 5;
-        vibrato.depth.value = 0.1;
-        filter2.frequency.rampTo(12000, 0.1);
-        reverb2.wet.value = 0.5;
-    },
-}
+};

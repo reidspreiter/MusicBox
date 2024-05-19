@@ -1,5 +1,5 @@
 import { boxSynth, ballSynth } from "./synths.js";
-import { eScale, lScale, clamp, percify, choose } from "./utils.js";
+import { eScale, lScale, clamp, percify, choose, getTheme } from "./utils.js";
 
 // Remove enable audio button if already enabled
 const audioButton = document.getElementById("audioButton");
@@ -15,11 +15,7 @@ kaboom({
     background: [255, 255, 255],
 });
 
-function getTheme() {
-    return document.documentElement.getAttribute("data-theme");
-}
-
-// Manage shape select buttons
+// Manage shape select and theme buttons
 let currShape = 1;
 const squareButton = document.getElementById("square");
 const circleButton = document.getElementById("circle");
@@ -47,10 +43,6 @@ function changeShape(shape) {
     if (Tone.context.state === "running") {
         if (currShape == 1) {
             boxSynth.stop();
-            boxSynth.reset();
-        } else if (currShape == 2) {
-            ballSynth.stop();
-            ballSynth.reset();
         }
     }
     
@@ -95,11 +87,10 @@ scene("musicBox", () => {
         buttonDiv.classList.remove("hide");
     });
 
+    // Draw black background if dark mode enabled
     const theme = getTheme();
     const bgColor = theme === "dark" ? BLACK : WHITE;
     const fgColor = theme === "dark" ? WHITE : BLACK;
-
-    // Draw black background if dark mode enabled
     if (theme === "dark") {
         add([
             rect(width(), height()),
@@ -154,12 +145,6 @@ scene("musicBox", () => {
     });
 
     // Sliders
-    const sliderParams = {
-        rate: 0.5,
-        freq: 0.7,
-        verb: 0.7,
-        delay: 0.7,
-    };
     const slider = {
         size: boxSize / 8,
     }
@@ -170,7 +155,7 @@ scene("musicBox", () => {
     slider.range = slider.right - slider.left;
     
 
-    Object.entries(sliderParams).forEach(([name, percent], i) => {
+    Object.entries(boxSynth.params).forEach(([name, percent], i) => {
         add([
             rect(slider.range, 2),
             color(fgColor),
@@ -182,7 +167,7 @@ scene("musicBox", () => {
             rect(slider.size, slider.size),
             color(fgColor),
             anchor("center"),
-            pos(slider.left + percent * boxSize, slider.yStart + slider.spacing * i),
+            pos(slider.left + percent * slider.range, slider.yStart + slider.spacing * i),
             area(),
             sliderDrag(),
             "slider",
@@ -291,7 +276,7 @@ scene("musicBox", () => {
                 if (currDrag !== this) {
                     return;
                 }
-                const newXPos = clamp(mousePos().x - xOffset, slider.left, slider.right);
+                const newXPos = clamp(slider.left, slider.right, mousePos().x - xOffset);
                 const perc = (newXPos - slider.left) / slider.range;
                 this.pos.x = newXPos;
 
@@ -299,18 +284,18 @@ scene("musicBox", () => {
                     rate.lVal = eScale(rate.lMin, rate.lMax, 1 - perc);
                     rate.uVal = eScale(rate.uMin, rate.uMax, 1 - perc);
                 } else if (this.is("freq")) {
-                    boxSynth.filter.setFreq(eScale(boxSynth.filter.min, boxSynth.filter.max, perc));
+                    boxSynth.filter.setFreq(perc);
                     if (perc <= 0.6) {
                         const newPerc = map(perc, 0, 0.6, 0, 1);
                         angle.lVal = lScale(angle.lMin, angle.lMax, newPerc);
                         angle.uVal = lScale(angle.uMin, angle.uMax, newPerc);
                     }
                 } else if (this.is("verb")) {
-                    boxSynth.reverb.setWet(eScale(boxSynth.reverb.min, boxSynth.reverb.max, perc));
+                    boxSynth.reverb.setVerbWet(perc);
                     size.lVal = eScale(size.lMin, size.lMax, 1 - perc);
                     size.uVal = eScale(size.uMin, size.uMax, 1 - perc);
                 } else {
-                    boxSynth.delay.setWet(eScale(boxSynth.delay.min, boxSynth.delay.max, perc));
+                    boxSynth.setDelWet(perc);
                     offset.val = eScale(offset.min, offset.max, perc);
                 }
             },
@@ -336,6 +321,22 @@ scene("musicBox", () => {
             setCursor("default");
         }
     });
+
+    // Save slider data
+    onSceneLeave(() => {
+        const sliders = get("slider");
+        sliders.forEach(obj => {
+            if (obj.is("rate")) {
+                boxSynth.params.rate = percify(slider.left, slider.right, obj.pos.x);
+            } else if (obj.is("freq")) {
+                boxSynth.params.freq = percify(slider.left, slider.right, obj.pos.x);
+            } else if (obj.is("verb")) {
+                boxSynth.params.verb = percify(slider.left, slider.right, obj.pos.x);
+            } else {
+                boxSynth.params.delay = percify(slider.left, slider.right, obj.pos.x);
+            }
+        });
+    });
 });
 
 //
@@ -354,10 +355,9 @@ scene("musicBall", () => {
         ballSynth.start();
     }
 
+    // Draw black background if dark mode enabled
     const theme = getTheme();
     const fgColor = theme === "dark" ? WHITE : BLACK;
-
-    // Draw black background if dark mode enabled
     if (theme === "dark") {
         add([
             rect(width(), height()),
@@ -378,15 +378,8 @@ scene("musicBall", () => {
 
     // Knobs
     loadSprite("knob", `./misc/knob${theme}.svg`);
-    const knobParams = {
-        pitch: 0,
-        freq: 0.8,
-        dist: 0,
-        vib: 0.1,
-        verb: 0.5,
-        vol: 0.95,
-    };
-    const numParams = Object.keys(knobParams).length;
+    
+    const numParams = Object.keys(ballSynth.params).length;
     const knob = {
         spriteDiameter: 617,
         min: -120,
@@ -397,7 +390,7 @@ scene("musicBall", () => {
     knob.y = height() - knob.diameter;
     knob.xStart = cWidth - knob.diameter * 3 - knob.diameter / 8;
 
-    Object.entries(knobParams).forEach(([name, percent], i) => {
+    Object.entries(ballSynth.params).forEach(([name, percent], i) => {
         const k = add([
             sprite("knob"),
             anchor("center"),
@@ -430,37 +423,37 @@ scene("musicBall", () => {
         min: ballSprite.scale / 10,
         max: ballSprite.scale,
     };
-    size.val = lScale(size.min, size.max, knobParams.vol);
+    size.val = lScale(size.min, size.max, ballSynth.params.vol);
 
     const radius = {
         min: ball.radius + ballSprite.diameter / 1.5,
         max: Math.min(cHeight, cWidth),
     };
-    radius.val = lScale(radius.min, radius.max, knobParams.verb);
+    radius.val = lScale(radius.min, radius.max, ballSynth.params.verb);
 
     const oblong = {
         min: 0,
         max: radius.val - ball.radius / 2,
     }
-    oblong.val = lScale(oblong.min, oblong.max, 1 - knobParams.freq);
+    oblong.val = lScale(oblong.min, oblong.max, 1 - ballSynth.params.freq);
 
     const speed = {
         min: 1,
-        max: 40,
+        max: 20,
     };
-    speed.val = lScale(speed.min, speed.max, knobParams.pitch);
+    speed.val = lScale(speed.min, speed.max, ballSynth.params.pitch);
 
     const deviation = {
         min: 0, 
         max: ballSprite.diameter * 2,
     };
-    deviation.val = eScale(deviation.min, deviation.max, knobParams.dist);
+    deviation.val = eScale(deviation.min, deviation.max, ballSynth.params.dist);
 
     const rotation = {
         min: 40,
         max: 2000,
     };
-    rotation.val = lScale(rotation.min, rotation.max, knobParams.vib);
+    rotation.val = lScale(rotation.min, rotation.max, ballSynth.params.vib);
 
     for (let i = 0; i < 4; i++) {
         add([
@@ -472,7 +465,7 @@ scene("musicBall", () => {
             rotate(0),
             z(1),
             {
-                startAngle: (90 * i) * (Math.PI / 180),
+                orbPos: (90 * i) * (Math.PI / 180),
             },
             "ballSprite"
         ]);
@@ -480,9 +473,9 @@ scene("musicBall", () => {
 
     // Orbit and rotate each sprite
     onUpdate("ballSprite", (ballSprite) => {
-        const angle = (time() * speed.val) + ballSprite.startAngle;
-        const xPos = cWidth + radius.val * Math.cos(angle);
-        const yPos = cHeight + (radius.val - oblong.val) * Math.sin(angle);
+        ballSprite.orbPos += dt() * speed.val;
+        const xPos = cWidth + radius.val * Math.cos(ballSprite.orbPos);
+        const yPos = cHeight + (radius.val - oblong.val) * Math.sin(ballSprite.orbPos);
 
         if (ballSprite.pos.y < cHeight) {
             ballSprite.z = -1;
@@ -497,7 +490,7 @@ scene("musicBall", () => {
 
     // Handle knob rotation
     let currDrag = null;
-    let currOblongPerc = 1 - knobParams.freq;
+    let currOblongPerc = 1 - ballSynth.params.freq;
     const sensitivity = 3;
     function knobDrag() {
         let yOffset = 0;
@@ -512,32 +505,32 @@ scene("musicBall", () => {
                 if (currDrag !== this) {
                     return;
                 }
-                const newAngle = clamp(-(mousePos().y * sensitivity) - yOffset, knob.min, knob.max);
+                const newAngle = clamp(knob.min, knob.max, -(mousePos().y * sensitivity) - yOffset);
                 this.angle = newAngle;
                 this.yOffset = newAngle;
-                const perc = percify(newAngle, knob.min, knob.max);
+                const perc = percify(knob.min, knob.max, newAngle);
 
                 if (this.is("pitch")) {
-                    ballSynth.pitcher.setPitch(lScale(ballSynth.pitcher.min, ballSynth.pitcher.max, perc));
+                    ballSynth.setPitch(perc);
                     speed.val = lScale(speed.min, speed.max, perc);
                 } else if (this.is("freq")) {
-                    ballSynth.filter.setFreq(eScale(ballSynth.filter.min, ballSynth.filter.max, perc));
+                    ballSynth.setFreq(perc);
                     currOblongPerc = 1 - perc;
                     oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
                 } else if (this.is("dist")) {
-                    ballSynth.distortion.e.distortion = lScale(ballSynth.distortion.min, ballSynth.distortion.max, perc);
+                    ballSynth.setDist(perc);
                     deviation.val = eScale(deviation.min, deviation.max, perc);
                 } else if (this.is("vib")) {
-                    ballSynth.vibrato.e.frequency.value = eScale(ballSynth.vibrato.minFreq, ballSynth.vibrato.maxFreq, perc);
-                    ballSynth.vibrato.e.depth.value = eScale(ballSynth.vibrato.minDepth, ballSynth.vibrato.maxDepth, perc);
+                    ballSynth.setVibFreq(perc);
+                    ballSynth.setVibDepth(perc);
                     rotation.val = lScale(rotation.min, rotation.max, perc);
                 } else if (this.is("verb")) {
-                    ballSynth.reverb.e.wet.value = eScale(ballSynth.reverb.min, ballSynth.reverb.max, perc);
+                    ballSynth.setVerbWet(perc);
                     radius.val = lScale(radius.min, radius.max, perc);
                     oblong.max = radius.val - ball.radius / 2;
                     oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
                 } else {
-                    ballSynth.synth.e.volume.value = lScale(ballSynth.synth.minVol, ballSynth.synth.maxVol, perc);
+                    ballSynth.setVol(perc);
                     const newScale = lScale(size.min, size.max, perc);
                     const balls = get("ballSprite");
                     balls.forEach(orbitingBall => {
@@ -566,6 +559,27 @@ scene("musicBall", () => {
             currDrag = null;
             setCursor("default");
         }
+    });
+
+    // Stop synth and save knob data
+    onSceneLeave(() => {
+        ballSynth.stop();
+        const knobs = get("knob");
+        knobs.forEach(obj => {
+            if (obj.is("pitch")) {
+                ballSynth.params.pitch = percify(knob.min, knob.max, obj.yOffset);
+            } else if (obj.is("freq")) {
+                ballSynth.params.freq = percify(knob.min, knob.max, obj.yOffset);
+            } else if (obj.is("dist")) {
+                ballSynth.params.dist = percify(knob.min, knob.max, obj.yOffset);
+            } else if (obj.is("vib")) {
+                ballSynth.params.vib = percify(knob.min, knob.max, obj.yOffset);
+            } else if (obj.is("verb")) {
+                ballSynth.params.verb = percify(knob.min, knob.max, obj.yOffset);
+            } else {
+                ballSynth.params.vol = percify(knob.min, knob.max, obj.yOffset);
+            }
+        });
     });
 });
 
