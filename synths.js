@@ -1,3 +1,5 @@
+import { choose, eScale, lScale } from "./utils.js";
+
 //
 // Music box synths and effects
 //
@@ -64,24 +66,36 @@ const lowPitches = [
 ];
 
 export const boxSynth = {
-    highSynth: highSynth,
-    highPitches: highPitches,
-    lowSynth: lowSynth,
-    lowPitches: lowPitches,
     delay: {
-        e: delay,
         min: 0.001,
         max: 0.99,
+        setWet: (val) => {
+            delay.wet.value = val;
+        },
     },
     filter: {
-        e: filter,
         min: 180,
         max: 12000,
+        setFreq: (val) => {
+            filter.frequency.rampTo(val, 0.1);
+        },
     },
     reverb: {
-        e: reverb,
         min: 0.001,
         max: 0.99,
+        setWet: (val) => {
+            reverb.wet.value = val;
+        },
+    },
+    playHigh: (duration) => {
+        highSynth.triggerAttackRelease(choose(highPitches), `${duration}n`);
+    },
+    playLow: (duration) => {
+        lowSynth.triggerAttackRelease(choose(lowPitches), `${duration}n`);
+    },
+    stop: () => {
+        highSynth.triggerRelease();
+        lowSynth.triggerRelease();
     },
     reset: () => {
         filter.frequency.rampTo(12000, 0.1);
@@ -140,18 +154,13 @@ export const ballSynth = {
         e: powerSynth,
         minVol: -38,
         maxVol: 0,
-        start: () => {
-            powerSynth.triggerAttack(["F2", "C3", "A3", "E4"]);
-            powerSynth.trigger
-        },
-        stop: () => {
-            powerSynth.triggerRelease(["F2", "C3", "A3", "E4"]);
-        },
     },
     pitcher: {
-        e: pitcher,
         min: 0,
         max: 43,
+        setPitch: (val) => {
+            pitcher.pitch = val;
+        },
     },
     vibrato: {
         e: vibrato,
@@ -161,9 +170,11 @@ export const ballSynth = {
         maxDepth: 0.6,
     },
     filter: {
-        e: filter2,
         min: 200,
         max: 14000,
+        setFreq: (val) => {
+            filter2.frequency.rampTo(val, 0.1);
+        },
     },
     distortion: {
         e: distortion2,
@@ -174,5 +185,20 @@ export const ballSynth = {
         e: reverb2,
         min: 0.001,
         max: 0.99,
+    },
+    start: () => {
+        powerSynth.triggerAttack(["F2", "C3", "A3", "E4"]);
+    },
+    stop: () => {
+        powerSynth.triggerRelease(["F2", "C3", "A3", "E4"]);
+    },
+    reset: () => {
+        distortion2.distortion = 0.01;
+        powerSynth.volume.value = -8;
+        pitcher.pitch = 0;
+        vibrato.frequency.value = 5;
+        vibrato.depth.value = 0.1;
+        filter2.frequency.rampTo(12000, 0.1);
+        reverb2.wet.value = 0.5;
     },
 }

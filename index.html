@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,7 @@
 <body>
     <canvas id="homeCanvas"></canvas>
     <h1 id="header" class="hide">Music Box</h1>
+    <button id="themeToggle">&#9724;</button>
     <div id="buttons" class="hide">
         <button onclick="" id="startButton">enter</button>
         <button id="audioButton">enable audio</button>
@@ -20,6 +21,8 @@
     </div>
     <script src="https://unpkg.com/tone"></script>
     <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
+    <script src="./theme.js" type="module"></script>
+    <script src="./utils.js" type="module" ></script>
     <script src="./synths.js" type="module" ></script>
     <script src="./musicalShapes.js" type="module" ></script>
 </body>

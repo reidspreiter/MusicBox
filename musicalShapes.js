@@ -1,4 +1,5 @@
-import { boxSynth, ballSynth } from './synths.js';
+import { boxSynth, ballSynth } from "./synths.js";
+import { eScale, lScale, clamp, percify, choose } from "./utils.js";
 
 // Remove enable audio button if already enabled
 const audioButton = document.getElementById("audioButton");
@@ -14,6 +15,10 @@ kaboom({
     background: [255, 255, 255],
 });
 
+function getTheme() {
+    return document.documentElement.getAttribute("data-theme");
+}
+
 // Manage shape select buttons
 let currShape = 1;
 const squareButton = document.getElementById("square");
@@ -21,9 +26,19 @@ const circleButton = document.getElementById("circle");
 const starButton = document.getElementById("star");
 const header = document.getElementById("header");
 const buttonDiv = document.getElementById("buttons");
+const themeButton = document.getElementById("themeToggle");
 squareButton.addEventListener("click", () => changeShape(1));
 circleButton.addEventListener("click", () => changeShape(2));
 starButton.addEventListener("click", () => changeShape(3));
+themeButton.addEventListener("click", () => {
+    if (currShape === 1) {
+        go("musicBox");
+    } else if (currShape === 2) {
+        go("musicBall");
+    } else {
+        go("musicStar");
+    }
+});
 
 function changeShape(shape) {
     if (currShape === shape) {
@@ -31,11 +46,11 @@ function changeShape(shape) {
     }
     if (Tone.context.state === "running") {
         if (currShape == 1) {
-            boxSynth.highSynth.triggerRelease();
-            boxSynth.lowSynth.triggerRelease();
+            boxSynth.stop();
             boxSynth.reset();
         } else if (currShape == 2) {
-            ballSynth.synth.stop();
+            ballSynth.stop();
+            ballSynth.reset();
         }
     }
     
@@ -68,26 +83,6 @@ audioButton.addEventListener("click", () => {
     }
 });
 
-// Align percentages to a specific scale exponentially
-function eScale(min, max, percent) {
-    return min + Math.pow(percent, 2) * (max - min);
-}
-
-// Align percentages to a specific scale linearly
-function lScale(min, max, percent) {
-    return min + percent * (max - min);
-}
-
-// Restrict values to a min and max
-function clamp(value, min, max) {
-    return Math.min(max, Math.max(value, min));
-}
-
-// Calculate percentage of range
-function percify(value, min, max) {
-    return (value - min) / (max - min);
-}
-
 //
 // Music Box
 //
@@ -100,6 +95,19 @@ scene("musicBox", () => {
         buttonDiv.classList.remove("hide");
     });
 
+    const theme = getTheme();
+    const bgColor = theme === "dark" ? BLACK : WHITE;
+    const fgColor = theme === "dark" ? WHITE : BLACK;
+
+    // Draw black background if dark mode enabled
+    if (theme === "dark") {
+        add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(BLACK)
+        ]);
+    }
+
     // Load notation sprites
     const notation = [
         "1n1",
@@ -110,7 +118,7 @@ scene("musicBox", () => {
         "32n1", "32n2",
     ];
     notation.forEach((note) => {
-        loadSprite(note, `./notation/${note}.png`);
+        loadSprite(note, `./notation/${note}${theme}.png`);
     });
 
     // Black center box
@@ -126,7 +134,7 @@ scene("musicBox", () => {
         rect(boxSize, boxSize),
         anchor("center"),
         pos(center()),
-        color(BLACK),
+        color(fgColor),
         area(),
         "musicBox"
     ]);
@@ -152,21 +160,29 @@ scene("musicBox", () => {
         verb: 0.7,
         delay: 0.7,
     };
-    const yStart = height() - height() / 5;
+    const slider = {
+        size: boxSize / 8,
+    }
+    slider.spacing = (boxSize - slider.size * 4) / 3 + slider.size;
+    slider.yStart = cHeight + boxSize / 2 + (cHeight - boxSize * 1.5) / 2 + slider.size / 2;
+    slider.left = boxSides.left + slider.size / 2;
+    slider.right = boxSides.right - slider.size / 2;
+    slider.range = slider.right - slider.left;
+    
 
     Object.entries(sliderParams).forEach(([name, percent], i) => {
         add([
-            rect(boxSize, 2),
-            color(BLACK),
+            rect(slider.range, 2),
+            color(fgColor),
             anchor("center"),
-            pos(cWidth, yStart + 30 * i),
+            pos(cWidth, slider.yStart + slider.spacing * i),
         ]);
 
         const sliderBox = add([
-            rect(boxSize / 8, 15),
-            color(BLACK),
+            rect(slider.size, slider.size),
+            color(fgColor),
             anchor("center"),
-            pos(boxSides.left + percent * boxSize, yStart + 30 * i),
+            pos(slider.left + percent * boxSize, slider.yStart + slider.spacing * i),
             area(),
             sliderDrag(),
             "slider",
@@ -179,17 +195,13 @@ scene("musicBox", () => {
 
     // Recursively spawn notes based on slider values
     const rate = {
-        l: {
-            min: 0.05,
-            max: 1,
-        },
-        u: {
-            min: 0.1,
-            max: 2,
-        },
+        lMin: 0.05,
+        lMax: 1,
+        uMin: 0.1,
+        uMax: 2,
     };
-    rate.lVal = eScale(rate.l.min, rate.l.max, 0.5);
-    rate.uVal = eScale(rate.u.min, rate.u.max, 0.5);
+    rate.lVal = eScale(rate.lMin, rate.lMax, 0.5);
+    rate.uVal = eScale(rate.uMin, rate.uMax, 0.5);
 
     const offset = {
         min: 10,
@@ -198,27 +210,19 @@ scene("musicBox", () => {
     offset.val = eScale(offset.min, offset.max, 0.7);
 
     const size = {
-        l: {
-            min: 0.015,
-            max: 0.027,
-        },
-        u: {
-            min: 0.025,
-            max: 0.046,
-        },
+        lMin: 0.015,
+        lMax: 0.027,
+        uMin: 0.025,
+        uMax: 0.046,
     };
-    size.lVal = eScale(size.l.min, size.l.max, 0.7);
-    size.uVal = eScale(size.u.min, size.u.max, 0.7);
+    size.lVal = eScale(size.lMin, size.lMax, 0.7);
+    size.uVal = eScale(size.uMin, size.uMax, 0.7);
 
     const angle = {
-        l: {
-            min: -110,
-            max: -25,
-        },
-        u: {
-            min: -55,
-            max: 25,
-        },
+        lMin: -110,
+        lMax: -25,
+        uMin: -55,
+        uMax: 25,
         lVal: -25,
         uVal: 25,
     };
@@ -259,15 +263,15 @@ scene("musicBox", () => {
                 rand(boxSides.top + rectHalf + 2, boxSides.bottom - rectHalf - 2),
             ),
             lifespan(1 / (duration + 1) + 0.1),
-            color(WHITE),
-            outline(1, BLACK),
+            color(bgColor),
+            outline(1, fgColor),
         ]);
 
         if (Tone.context.state === "running") {
             if (duration < 4) {
-                boxSynth.lowSynth.triggerAttackRelease(choose(boxSynth.lowPitches), `${duration}n`);
+                boxSynth.playLow(duration);
             } else {
-                boxSynth.highSynth.triggerAttackRelease(choose(boxSynth.highPitches), `${duration}n`);
+                boxSynth.playHigh(duration);
             }
         }
     }
@@ -287,27 +291,26 @@ scene("musicBox", () => {
                 if (currDrag !== this) {
                     return;
                 }
-                const newXPos = clamp(mousePos().x - xOffset, boxSides.left, boxSides.right);
-                const perc = (newXPos - boxSides.left) / boxSize;
+                const newXPos = clamp(mousePos().x - xOffset, slider.left, slider.right);
+                const perc = (newXPos - slider.left) / slider.range;
                 this.pos.x = newXPos;
 
                 if (this.is("rate")) {
-                    rate.lVal = eScale(rate.l.min, rate.l.max, 1 - perc);
-                    rate.uVal = eScale(rate.u.min, rate.u.max, 1 - perc);
+                    rate.lVal = eScale(rate.lMin, rate.lMax, 1 - perc);
+                    rate.uVal = eScale(rate.uMin, rate.uMax, 1 - perc);
                 } else if (this.is("freq")) {
-                    const newFreq = eScale(boxSynth.filter.min, boxSynth.filter.max, perc);
-                    boxSynth.filter.e.frequency.rampTo(newFreq, 0.1);
+                    boxSynth.filter.setFreq(eScale(boxSynth.filter.min, boxSynth.filter.max, perc));
                     if (perc <= 0.6) {
                         const newPerc = map(perc, 0, 0.6, 0, 1);
-                        angle.lVal = lScale(angle.l.min, angle.l.max, newPerc);
-                        angle.uVal = lScale(angle.u.min, angle.u.max, newPerc);
+                        angle.lVal = lScale(angle.lMin, angle.lMax, newPerc);
+                        angle.uVal = lScale(angle.uMin, angle.uMax, newPerc);
                     }
                 } else if (this.is("verb")) {
-                    boxSynth.reverb.e.wet.value = eScale(boxSynth.reverb.min, boxSynth.reverb.max, perc);
-                    size.lVal = eScale(size.l.min, size.l.max, 1 - perc);
-                    size.uVal = eScale(size.u.min, size.u.max, 1 - perc);
+                    boxSynth.reverb.setWet(eScale(boxSynth.reverb.min, boxSynth.reverb.max, perc));
+                    size.lVal = eScale(size.lMin, size.lMax, 1 - perc);
+                    size.uVal = eScale(size.uMin, size.uMax, 1 - perc);
                 } else {
-                    boxSynth.delay.e.wet.value = eScale(boxSynth.delay.min, boxSynth.delay.max, perc);
+                    boxSynth.delay.setWet(eScale(boxSynth.delay.min, boxSynth.delay.max, perc));
                     offset.val = eScale(offset.min, offset.max, perc);
                 }
             },
@@ -348,7 +351,20 @@ scene("musicBall", () => {
     });
 
     if (Tone.context.state === "running") {
-        ballSynth.synth.start();
+        ballSynth.start();
+    }
+
+    const theme = getTheme();
+    const fgColor = theme === "dark" ? WHITE : BLACK;
+
+    // Draw black background if dark mode enabled
+    if (theme === "dark") {
+        add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(BLACK),
+            z(-2),
+        ]);
     }
 
     // Black center circle
@@ -356,12 +372,12 @@ scene("musicBall", () => {
         circle(Math.max(width() / 16, height() / 16)),
         anchor("center"),
         pos(center()),
-        color(BLACK),
+        color(fgColor),
         "musicBall",
     ]);
 
     // Knobs
-    loadSprite("knob", `./misc/knob.svg`);
+    loadSprite("knob", `./misc/knob${theme}.svg`);
     const knobParams = {
         pitch: 0,
         freq: 0.8,
@@ -403,7 +419,7 @@ scene("musicBall", () => {
     });
 
     // Spawn rotating ball sprites
-    loadSprite("ball", "./misc/ball.svg");
+    loadSprite("ball", `./misc/ball${theme}.svg`);
     const ballSprite = {
         spriteDiameter: 1200,
         diameter: ball.radius,
@@ -430,7 +446,7 @@ scene("musicBall", () => {
 
     const speed = {
         min: 1,
-        max: 60,
+        max: 40,
     };
     speed.val = lScale(speed.min, speed.max, knobParams.pitch);
 
@@ -502,11 +518,10 @@ scene("musicBall", () => {
                 const perc = percify(newAngle, knob.min, knob.max);
 
                 if (this.is("pitch")) {
-                    ballSynth.pitcher.e.pitch = lScale(ballSynth.pitcher.min, ballSynth.pitcher.max, perc);
+                    ballSynth.pitcher.setPitch(lScale(ballSynth.pitcher.min, ballSynth.pitcher.max, perc));
                     speed.val = lScale(speed.min, speed.max, perc);
                 } else if (this.is("freq")) {
-                    const newFreq = eScale(ballSynth.filter.min, ballSynth.filter.max, perc);
-                    ballSynth.filter.e.frequency.rampTo(newFreq, 0.1);
+                    ballSynth.filter.setFreq(eScale(ballSynth.filter.min, ballSynth.filter.max, perc));
                     currOblongPerc = 1 - perc;
                     oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
                 } else if (this.is("dist")) {
@@ -560,10 +575,18 @@ scene("musicBall", () => {
 scene("musicStar", () => {
     const {x: cWidth, y: cHeight} = center();
 
-    // Resize elements on screen size change
-    onResize(() => {
-        go("musicStar");
-    });
+    const theme = getTheme();
+    const bgColor = theme === "dark" ? BLACK : WHITE;
+    const fgColor = theme === "dark" ? WHITE : BLACK;
+
+    // Draw black background if dark mode enabled
+    if (theme === "dark") {
+        add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(BLACK)
+        ]);
+    }
 
     // Draw a 6 pointed asterisk
     function drawStar(size, xPos, yPos) {
@@ -573,7 +596,7 @@ scene("musicStar", () => {
                 anchor("center"),
                 rect(starWeight, size),
                 pos(xPos, yPos),
-                color(BLACK),
+                color(fgColor),
                 rotate(angle),
             ]);
         }
