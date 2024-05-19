@@ -153,7 +153,6 @@ scene("musicBox", () => {
     slider.left = boxSides.left + slider.size / 2;
     slider.right = boxSides.right - slider.size / 2;
     slider.range = slider.right - slider.left;
-    
 
     Object.entries(boxSynth.params).forEach(([name, percent], i) => {
         add([
@@ -284,14 +283,14 @@ scene("musicBox", () => {
                     rate.lVal = eScale(rate.lMin, rate.lMax, 1 - perc);
                     rate.uVal = eScale(rate.uMin, rate.uMax, 1 - perc);
                 } else if (this.is("freq")) {
-                    boxSynth.filter.setFreq(perc);
+                    boxSynth.setFreq(perc);
                     if (perc <= 0.6) {
                         const newPerc = map(perc, 0, 0.6, 0, 1);
                         angle.lVal = lScale(angle.lMin, angle.lMax, newPerc);
                         angle.uVal = lScale(angle.uMin, angle.uMax, newPerc);
                     }
                 } else if (this.is("verb")) {
-                    boxSynth.reverb.setVerbWet(perc);
+                    boxSynth.setVerbWet(perc);
                     size.lVal = eScale(size.lMin, size.lMax, 1 - perc);
                     size.uVal = eScale(size.uMin, size.uMax, 1 - perc);
                 } else {
