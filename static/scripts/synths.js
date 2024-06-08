@@ -207,9 +207,9 @@ export const ballSynth = {
         reverb2.e.wet.value = eScale(reverb2.min, reverb2.max, perc);
     },
     start: () => {
-        powerSynth.e.triggerAttack(["F2", "C3", "A3", "E4"]);
+        powerSynth.e.triggerAttack(["C2", "G2", "E3", "B3"]);
     },
     stop: () => {
-        powerSynth.e.triggerRelease(["F2", "C3", "A3", "E4"]);
+        powerSynth.e.triggerRelease(["C2", "G2", "E3", "B3"]);
     },
 };

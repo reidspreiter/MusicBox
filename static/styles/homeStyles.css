@@ -63,8 +63,7 @@ button:hover {
 }
 
 .hide {
-    cursor: default;
-    opacity: 0;
+    display: none;
 }
 
 #shapeSelector {

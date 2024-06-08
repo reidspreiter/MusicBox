@@ -27,9 +27,9 @@ squareButton.addEventListener("click", () => changeShape(1));
 circleButton.addEventListener("click", () => changeShape(2));
 starButton.addEventListener("click", () => changeShape(3));
 themeButton.addEventListener("click", () => {
-    if (currShape === 1) {
+    if (currShape == 1) {
         go("musicBox");
-    } else if (currShape === 2) {
+    } else if (currShape == 2) {
         go("musicBall");
     } else {
         go("musicStar");
@@ -109,7 +109,7 @@ scene("musicBox", () => {
         "32n1", "32n2",
     ];
     notation.forEach((note) => {
-        loadSprite(note, `./notation/${note}${theme}.png`);
+        loadSprite(note, `./static/graphics/notation/${note}${theme}.png`);
     });
 
     // Black center box
@@ -145,15 +145,17 @@ scene("musicBox", () => {
     });
 
     // Sliders
+    const availableSliderSpace = cHeight + boxSize * 1.6 < height() ? boxSize : cHeight - boxHalf - 20;
     const slider = {
-        size: boxSize / 8,
+        size: availableSliderSpace / 8,
     }
-    slider.spacing = (boxSize - slider.size * 4) / 3 + slider.size;
-    slider.yStart = cHeight + boxSize / 2 + (cHeight - boxSize * 1.5) / 2 + slider.size / 2;
+    const bottomMargin = (availableSliderSpace - slider.size * 4) / 3;
+    slider.spacing = bottomMargin + slider.size;
+    slider.yStart = cHeight + boxHalf + (cHeight - boxHalf - availableSliderSpace) / 2 + slider.size / 2;
     slider.left = boxSides.left + slider.size / 2;
     slider.right = boxSides.right - slider.size / 2;
     slider.range = slider.right - slider.left;
-
+    
     Object.entries(boxSynth.params).forEach(([name, percent], i) => {
         add([
             rect(slider.range, 2),
@@ -174,6 +176,9 @@ scene("musicBox", () => {
         ]);
         sliderBox.onHover(() => {
             setCursor("move");
+        });
+        sliderBox.onHoverEnd(() => {
+            setCursor("default");
         });
     });
 
@@ -376,7 +381,7 @@ scene("musicBall", () => {
     ]);
 
     // Knobs
-    loadSprite("knob", `./misc/knob${theme}.svg`);
+    loadSprite("knob", `./static/graphics/misc/knob${theme}.svg`);
     
     const numParams = Object.keys(ballSynth.params).length;
     const knob = {
@@ -408,10 +413,13 @@ scene("musicBall", () => {
         k.onHover(() => {
             setCursor("move");
         });
+        k.onHoverEnd(() => {
+            setCursor("default");
+        });
     });
 
     // Spawn rotating ball sprites
-    loadSprite("ball", `./misc/ball${theme}.svg`);
+    loadSprite("ball", `./static/graphics/misc/ball${theme}.svg`);
     const ballSprite = {
         spriteDiameter: 1200,
         diameter: ball.radius,
@@ -437,7 +445,7 @@ scene("musicBall", () => {
     oblong.val = lScale(oblong.min, oblong.max, 1 - ballSynth.params.freq);
 
     const speed = {
-        min: 1,
+        min: 0.2,
         max: 20,
     };
     speed.val = lScale(speed.min, speed.max, ballSynth.params.pitch);
