@@ -55,6 +55,7 @@ function updateScene(refreshScene = true) {
     } else {
         starButton.innerHTML = `<img src="./static/graphics/shapes/star${theme}.svg"></img>`;
         header.innerText = "Music Star";
+        const yea = 0;
         refreshScene? go("musicStar") : 0;
     }
 }
