@@ -1,4 +1,4 @@
-import { boxSynth, ballSynth } from "./synths.js";
+import { boxSynth, ballSynth, starSynth } from "./synths.js";
 import { eScale, lScale, clamp, percify, choose, getTheme } from "./utils.js";
 
 const audioButton = document.getElementById("audio-button");
@@ -137,7 +137,7 @@ scene("musicBox", () => {
         loadSprite(note, `./static/graphics/notation/${note}${theme}.png`);
     });
 
-    // Black center box
+    // Center box
     const boxSize = baseShapeSize();
     const boxHalf = boxSize / 2;
     const boxSides = {
@@ -375,7 +375,7 @@ scene("musicBall", () => {
     const fgColor = theme === "dark" ? WHITE : BLACK;
     drawBackground(theme);
 
-    // Black center circle
+    // Center circle
     const ball = add([
         circle(baseShapeSize() / 2),
         anchor("center"),
@@ -591,27 +591,153 @@ scene("musicStar", () => {
     onLoad(() => displayContent());
 
     const theme = getTheme();
-    const bgColor = theme === "dark" ? BLACK : WHITE;
-    const fgColor = theme === "dark" ? WHITE : BLACK;
+    const fgColor = theme == "dark" ? WHITE : BLACK;
     drawBackground(theme);
 
-    // Draw a 6 pointed asterisk
-    function drawStar(size, xPos, yPos) {
-        const starWeight = size / 6;
-        for (let angle = 0; angle <= 120; angle += 60) {
-            add([
+    loadSprite("starOutline", `./static/graphics/shapes/staroutline${theme}.svg`)
+    loadSprite("star", `./static/graphics/shapes/star${theme}.svg`);
+
+    // Center star
+    const starSprite = {
+        size: 241.890,
+        pointWidth: 49.135,
+    };
+    const musicStarSize = baseShapeSize();
+    const starScale = musicStarSize / starSprite.size;
+    add([
+        sprite("star"),
+        anchor("center"),
+        pos(center()),
+        scale(starScale),
+        "star",
+    ]);
+
+    // Sequencer
+    const sequenceStar = {
+        region: Math.min(height(), width()),
+    }
+    sequenceStar.size = sequenceStar.region / 14;
+    sequenceStar.pointWidth = 49.135 / 241.890 * sequenceStar.size;
+    sequenceStar.margin = sequenceStar.size * 2 / 11;
+    sequenceStar.xStart = cWidth - sequenceStar.margin * 5.5 - sequenceStar.size * 5.5;
+    sequenceStar.yStart = height() - 64 - sequenceStar.margin - sequenceStar.size;
+    sequenceStar.scale = sequenceStar.size / starSprite.size;
+    function fillSequenceStar(xPos, yPos, i, j) {
+        starSynth.sequencer[i][j] = true;
+        add([
+            sprite("star"),
+            anchor("center"),
+            pos(xPos, yPos),
+            scale(sequenceStar.scale),
+            area(),
+            `${i}${j}`,
+        ]);
+    }
+
+    function hollowSequenceStar(i, j) {
+        starSynth.sequencer[i][j] = false;
+        const starFilling = get(`${i}${j}`);
+        destroy(starFilling[0]);
+    }
+
+    // Draw sequence buttons
+    for (let i = 0; i < 2; i++) {
+        const yPos = sequenceStar.yStart + i * (sequenceStar.margin + sequenceStar.size)
+        for (let j = 0; j < 12; j++) {
+            const xPos = sequenceStar.xStart + j * (sequenceStar.size + sequenceStar.margin);
+            starSynth.sequencer[i][j] ? fillSequenceStar(xPos, yPos, i, j) : 0;
+            const s = add([
+                sprite("starOutline"),
                 anchor("center"),
-                rect(starWeight, size),
                 pos(xPos, yPos),
-                color(fgColor),
-                rotate(angle),
+                scale(sequenceStar.scale),
+                area(),
+                {
+                    x: xPos,
+                    y: yPos,
+                    active: starSynth.sequencer[i][j] ? true : false,
+                    i: i,
+                    j: j,
+                }
             ]);
+            s.onHover(() => {
+                setCursor("pointer");
+            });
+            s.onHoverEnd(() => {
+                setCursor("default");
+            });
+            s.onClick(() => {
+                if (s.active) {
+                    hollowSequenceStar(s.i, s.j);
+                } else {
+                    fillSequenceStar(s.x, s.y, s.i, s.j);
+                }
+                s.active = !s.active;
+            });
         }
     }
 
-    // Black center star
-    const musicStarSize = baseShapeSize();
-    drawStar(musicStarSize, cWidth, cHeight);
+    // Playheads
+    let topTempo = 500;
+    let topStepTime = 60 / topTempo;
+    let topStep = 11
+    const topPlayhead = add([
+        rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
+        anchor("center"),
+        pos(sequenceStar.xStart, sequenceStar.yStart - sequenceStar.size * 0.8),
+        color(fgColor),
+    ]);
+
+    let bottomTempo = 400;
+    let bottomStepTime = 60 / bottomTempo;
+    let bottomStep = 11;
+    const bottomPlayhead = add([
+        rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
+        anchor("center"),
+        pos(sequenceStar.xStart, sequenceStar.yStart + sequenceStar.margin + sequenceStar.size * 1.8),
+        color(fgColor),
+    ]);
+
+    //FIXME joint tempo button will allow both playbuttons to wait from the same function to guarantee they play together
+    //when not joined, move separately
+    function moveTopPlayhead() {
+        topStep++;
+        bottomStep++;
+        if (topStep > 11) {
+            topPlayhead.pos.x = sequenceStar.xStart;
+            bottomPlayhead.pos.x = sequenceStar.xStart;
+            topStep = 0;
+            bottomStep = 0
+        } else {
+            topPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
+            bottomPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
+        }
+        if (starSynth.sequencer[0][topStep]) {
+            starSynth.playTop(topStep);
+        }
+        if (starSynth.sequencer[1][bottomStep]) {
+            starSynth.playBottom(bottomStep);
+        }
+        wait(topStepTime, moveTopPlayhead);
+    }
+
+    function moveBottomPlayhead() {
+        bottomStep++;
+        if (bottomStep > 11) {
+            bottomPlayhead.pos.x = sequenceStar.xStart;
+            bottomStep = 0;
+        } else {
+            bottomPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
+        }
+        if (starSynth.sequencer[1][bottomStep]) {
+            starSynth.playBottom(bottomStep);
+        }
+        wait(bottomStepTime, moveBottomPlayhead);
+    }
+    wait(bottomStepTime, () => {
+        //moveBottomPlayhead();
+        moveTopPlayhead();
+    });
 });
 
 go("musicBox");

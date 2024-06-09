@@ -213,3 +213,55 @@ export const ballSynth = {
         powerSynth.e.triggerRelease(["C2", "G2", "E3", "B3"]);
     },
 };
+
+//
+// Music Star synths and effects
+//
+
+const topPitches = ["F4", "G4", "Ab4", "Bb4", "C5", "D5", "Eb5", "F5", "G5", "Bb5", "Ab5", "C6"];
+const bottomPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D4", "C4", "G3"];
+
+const sequencer = [
+    Array(12).fill(false),
+    Array(12).fill(false),
+];
+sequencer[0][0] = true;
+sequencer[1][5] = true;
+
+const topSynth = new Tone.Synth({
+    oscillator: {
+        type: "sawtooth",
+    },
+    volume: -16,
+    maxPolyphony: 4,
+    envelope: {
+        attack: 0.01,
+        decay: 0.5,
+        sustain: 0.1,
+        release: 0.3,
+    },
+}).toDestination();
+
+const bottomSynth = new Tone.Synth({
+    oscillator: {
+        type: "sawtooth",
+    },
+    volume: -16,
+    maxPolyphony: 4,
+    envelope: {
+        attack: 0.01,
+        decay: 0.5,
+        sustain: 0.1,
+        release: 0.3,
+    },
+}).toDestination();
+
+export const starSynth = {
+    sequencer: sequencer,
+    playTop: (step) => {
+        topSynth.triggerAttackRelease(topPitches[step], "4n");
+    },
+    playBottom: (step) => {
+        bottomSynth.triggerAttackRelease(bottomPitches[step], "4n");
+    },
+}
