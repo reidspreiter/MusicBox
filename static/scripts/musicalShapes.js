@@ -1,8 +1,16 @@
 import { boxSynth, ballSynth } from "./synths.js";
 import { eScale, lScale, clamp, percify, choose, getTheme } from "./utils.js";
 
-// Remove enable audio button if already enabled
 const audioButton = document.getElementById("audio-button");
+const squareButton = document.getElementById("square");
+const circleButton = document.getElementById("circle");
+const starButton = document.getElementById("star");
+const header = document.getElementById("header");
+const buttonDiv = document.getElementById("buttons");
+const themeButton = document.getElementById("theme-toggle");
+let currShape = "square";
+
+// Remove enable audio button if already enabled
 document.addEventListener('DOMContentLoaded', () => {
     if (Tone.context.state === "running") {
         audioButton.classList.add("hide");
@@ -16,14 +24,17 @@ kaboom({
     background: [255, 255, 255],
 });
 
+// Initialize Tone.js
+audioButton.addEventListener("click", () => {
+    Tone.start();
+    audioButton.classList.add("hide");
+
+    if (currShape == 2) {
+        ballSynth.synth.start();
+    }
+});
+
 // Manage shape select and theme buttons
-let currShape = "square";
-const squareButton = document.getElementById("square");
-const circleButton = document.getElementById("circle");
-const starButton = document.getElementById("star");
-const header = document.getElementById("header");
-const buttonDiv = document.getElementById("buttons");
-const themeButton = document.getElementById("theme-toggle");
 squareButton.addEventListener("click", () => changeShape("square"));
 circleButton.addEventListener("click", () => changeShape("circle"));
 starButton.addEventListener("click", () => changeShape("star"));
@@ -65,15 +76,39 @@ function displayContent() {
     themeButton.classList.remove("hide");
 }
 
-// Initialize Tone.js
-audioButton.addEventListener("click", () => {
-    Tone.start();
-    audioButton.classList.add("hide");
-
-    if (currShape == 2) {
-        ballSynth.synth.start();
+function drawBackground(theme) {
+    if (theme == "dark") {
+        add([
+            rect(width(), height()),
+            pos(0, 0),
+            color(BLACK),
+            z(-2),
+        ]);
     }
-});
+}
+
+// Pick and release dragged objects
+function mousePress(currDrag, objName) {
+    if (!currDrag) {
+        for (const obj of get(objName)) {
+            if (obj.isHovering()) {
+                obj.pick();
+                return;
+            }
+        }
+    }
+}
+
+function mouseRelease(currDrag) {
+    if (currDrag) {
+        currDrag.drop();
+        setCursor("default");
+    }
+}
+
+function baseShapeSize() {
+    return Math.max(width() / 8, height() / 8);
+}
 
 //
 // Music Box
@@ -85,15 +120,9 @@ scene("musicBox", () => {
 
     // Draw black background if dark mode enabled
     const theme = getTheme();
-    const bgColor = theme === "dark" ? BLACK : WHITE;
-    const fgColor = theme === "dark" ? WHITE : BLACK;
-    if (theme === "dark") {
-        add([
-            rect(width(), height()),
-            pos(0, 0),
-            color(BLACK)
-        ]);
-    }
+    const bgColor = theme == "dark" ? BLACK : WHITE;
+    const fgColor = theme == "dark" ? WHITE : BLACK;
+    drawBackground(theme);
 
     // Load notation sprites
     const notation = [
@@ -109,7 +138,7 @@ scene("musicBox", () => {
     });
 
     // Black center box
-    const boxSize = Math.max(width() / 8, height() / 8);
+    const boxSize = baseShapeSize();
     const boxHalf = boxSize / 2;
     const boxSides = {
         left: cWidth - boxHalf,
@@ -238,7 +267,8 @@ scene("musicBox", () => {
 
     // Update music box and play note
     function playNote(duration) {
-        const rectSize = boxHalf / duration;
+        const durationSize = boxHalf / duration;
+        const rectSize =  durationSize < 2 ? 2 : durationSize;
         const rectHalf = rectSize / 2;
         add([
             rect(rectSize, rectSize),
@@ -272,6 +302,9 @@ scene("musicBox", () => {
                 currDrag = this;
                 xOffset = mousePos().x - this.pos.x;
             },
+            drop() {
+                currDrag = null;
+            },
             update() {
                 if (currDrag !== this) {
                     return;
@@ -302,25 +335,8 @@ scene("musicBox", () => {
         }
     }
 
-    // Pick dragged objects
-    onMousePress(() => {
-        if (!currDrag) {
-            for (const obj of get("slider")) {
-                if (obj.isHovering()) {
-                    obj.pick();
-                    return;
-                }
-            }
-        }
-    });
-
-    // Drop dragged objects
-    onMouseRelease(() => {
-        if (currDrag) {
-            currDrag = null;
-            setCursor("default");
-        }
-    });
+    onMousePress(() => mousePress(currDrag, "slider"));
+    onMouseRelease(() => mouseRelease(currDrag));
 
     // Save slider data
     onSceneLeave(() => {
@@ -348,7 +364,6 @@ scene("musicBox", () => {
 scene("musicBall", () => {
     const {x: cWidth, y: cHeight} = center();
 
-    // Display html content after loading
     onLoad(() => displayContent());
 
     if (Tone.context.state === "running") {
@@ -358,18 +373,11 @@ scene("musicBall", () => {
     // Draw black background if dark mode enabled
     const theme = getTheme();
     const fgColor = theme === "dark" ? WHITE : BLACK;
-    if (theme === "dark") {
-        add([
-            rect(width(), height()),
-            pos(0, 0),
-            color(BLACK),
-            z(-2),
-        ]);
-    }
+    drawBackground(theme);
 
     // Black center circle
     const ball = add([
-        circle(Math.max(width() / 16, height() / 16)),
+        circle(baseShapeSize() / 2),
         anchor("center"),
         pos(center()),
         color(fgColor),
@@ -430,7 +438,7 @@ scene("musicBall", () => {
 
     const radius = {
         min: ball.radius + ballSprite.diameter / 1.5,
-        max: Math.min(cHeight, cWidth),
+        max: Math.min(cHeight, cWidth) + 50,
     };
     radius.val = lScale(radius.min, radius.max, ballSynth.params.verb);
 
@@ -504,6 +512,9 @@ scene("musicBall", () => {
                 currDrag = this;
                 yOffset = -(mousePos().y * sensitivity) - this.yOffset;
             },
+            drop() {
+                currDrag = null;
+            },
             update() {
                 if (currDrag !== this) {
                     return;
@@ -544,25 +555,8 @@ scene("musicBall", () => {
         }
     }
 
-    // Pick dragged objects
-    onMousePress(() => {
-        if (!currDrag) {
-            for (const obj of get("knob")) {
-                if (obj.isHovering()) {
-                    obj.pick();
-                    return;
-                }
-            }
-        }
-    });
-
-    // Drop dragged objects
-    onMouseRelease(() => {
-        if (currDrag) {
-            currDrag = null;
-            setCursor("default");
-        }
-    });
+    onMousePress(() => mousePress(currDrag, "knob"));
+    onMouseRelease(() => mouseRelease(currDrag));
 
     // Stop synth and save knob data
     onSceneLeave(() => {
@@ -599,15 +593,7 @@ scene("musicStar", () => {
     const theme = getTheme();
     const bgColor = theme === "dark" ? BLACK : WHITE;
     const fgColor = theme === "dark" ? WHITE : BLACK;
-
-    // Draw black background if dark mode enabled
-    if (theme === "dark") {
-        add([
-            rect(width(), height()),
-            pos(0, 0),
-            color(BLACK)
-        ]);
-    }
+    drawBackground(theme);
 
     // Draw a 6 pointed asterisk
     function drawStar(size, xPos, yPos) {
@@ -624,8 +610,8 @@ scene("musicStar", () => {
     }
 
     // Black center star
-    const musicStarSize = width() > height() ? width() / 8 : height() / 8;
-    drawStar(musicStarSize, width() / 2, height() / 2);
+    const musicStarSize = baseShapeSize();
+    drawStar(musicStarSize, cWidth, cHeight);
 });
 
 go("musicBox");
