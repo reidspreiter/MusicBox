@@ -14,7 +14,7 @@ function updateThemeOnHtmlEl(theme) {
     document.querySelector("html").setAttribute("data-theme", theme);
 }
 
-const button = document.getElementById("themeToggle");
+const button = document.getElementById("theme-toggle");
 const localStorageTheme = localStorage.getItem("theme");
 const systemSettingDark = window.matchMedia("(prefers-color-scheme: light)");
 let currentThemeSetting = getCurrTheme(localStorageTheme, systemSettingDark);

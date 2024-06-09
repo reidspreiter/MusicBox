@@ -2,67 +2,61 @@ import { boxSynth, ballSynth } from "./synths.js";
 import { eScale, lScale, clamp, percify, choose, getTheme } from "./utils.js";
 
 // Remove enable audio button if already enabled
-const audioButton = document.getElementById("audioButton");
+const audioButton = document.getElementById("audio-button");
 document.addEventListener('DOMContentLoaded', () => {
     if (Tone.context.state === "running") {
         audioButton.classList.add("hide");
     }
+    updateScene(false);
 });
 
 // Initialize Kaboom
 kaboom({
-    canvas: document.getElementById("homeCanvas"), 
+    canvas: document.getElementById("home-canvas"), 
     background: [255, 255, 255],
 });
 
 // Manage shape select and theme buttons
-let currShape = 1;
+let currShape = "square";
 const squareButton = document.getElementById("square");
 const circleButton = document.getElementById("circle");
 const starButton = document.getElementById("star");
 const header = document.getElementById("header");
 const buttonDiv = document.getElementById("buttons");
-const themeButton = document.getElementById("themeToggle");
-squareButton.addEventListener("click", () => changeShape(1));
-circleButton.addEventListener("click", () => changeShape(2));
-starButton.addEventListener("click", () => changeShape(3));
-themeButton.addEventListener("click", () => {
-    if (currShape == 1) {
-        go("musicBox");
-    } else if (currShape == 2) {
-        go("musicBall");
-    } else {
-        go("musicStar");
-    }
-});
+const themeButton = document.getElementById("theme-toggle");
+squareButton.addEventListener("click", () => changeShape("square"));
+circleButton.addEventListener("click", () => changeShape("circle"));
+starButton.addEventListener("click", () => changeShape("star"));
+themeButton.addEventListener("click", () => updateScene());
 
 function changeShape(shape) {
-    if (currShape === shape) {
+    if (currShape == shape) {
         return;
     }
-    if (Tone.context.state === "running") {
-        if (currShape == 1) {
-            boxSynth.stop();
-        }
-    }
-    
-    squareButton.innerHTML = "&#128927;";
-    circleButton.innerHTML = "&#128901;";
-    starButton.innerHTML = "&#128949;";
-    if (shape == 1) {
-        go("musicBox");
-        squareButton.innerHTML = "&#128915;";
-        header.innerText = "Music Box";
-    } else if (shape == 2) {
-        go("musicBall");
-        circleButton.innerHTML = "&#128905;";
-        header.innerText = "Music Ball";
-    } else {
-        go("musicStar");
-        starButton.innerHTML = "&#128954;";
-        header.innerText = "Music Star";
-    }
     currShape = shape;
+    updateScene();
+}
+
+function updateScene(refreshScene = true) {
+    const theme = getTheme();
+    themeButton.innerHTML = `<img src="./static/graphics/shapes/${currShape}${theme}.svg"></img>`;
+    squareButton.innerHTML = `<img src="./static/graphics/shapes/squareoutline${theme}.svg"></img>`;
+    circleButton.innerHTML = `<img src="./static/graphics/shapes/circleoutline${theme}.svg"></img>`;
+    starButton.innerHTML = `<img src="./static/graphics/shapes/staroutline${theme}.svg"></img>`;
+
+    if (currShape == "square") {
+        squareButton.innerHTML = `<img src="./static/graphics/shapes/square${theme}.svg"></img>`;
+        header.innerText = "Music Box";
+        refreshScene? go("musicBox") : 0;
+    } else if (currShape == "circle") {
+        circleButton.innerHTML = `<img src="./static/graphics/shapes/circle${theme}.svg"></img>`;
+        header.innerText = "Music Ball";
+        refreshScene? go("musicBall") : 0;
+    } else {
+        starButton.innerHTML = `<img src="./static/graphics/shapes/star${theme}.svg"></img>`;
+        header.innerText = "Music Star";
+        refreshScene? go("musicStar") : 0;
+    }
 }
 
 // Initialize Tone.js
@@ -328,6 +322,9 @@ scene("musicBox", () => {
 
     // Save slider data
     onSceneLeave(() => {
+        if (Tone.context.state === "running") {
+            boxSynth.stop();
+        }
         const sliders = get("slider");
         sliders.forEach(obj => {
             if (obj.is("rate")) {
@@ -570,7 +567,9 @@ scene("musicBall", () => {
 
     // Stop synth and save knob data
     onSceneLeave(() => {
-        ballSynth.stop();
+        if (Tone.context.state === "running") {
+            ballSynth.stop();
+        }
         const knobs = get("knob");
         knobs.forEach(obj => {
             if (obj.is("pitch")) {
