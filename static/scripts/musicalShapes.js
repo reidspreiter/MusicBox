@@ -59,6 +59,12 @@ function updateScene(refreshScene = true) {
     }
 }
 
+function displayContent() {
+    header.classList.remove("hide");
+    buttonDiv.classList.remove("hide");
+    themeButton.classList.remove("hide");
+}
+
 // Initialize Tone.js
 audioButton.addEventListener("click", () => {
     Tone.start();
@@ -75,11 +81,7 @@ audioButton.addEventListener("click", () => {
 scene("musicBox", () => {
     const {x: cWidth, y: cHeight} = center();
 
-    // Display html content after loading
-    onLoad(() => {
-        header.classList.remove("hide");
-        buttonDiv.classList.remove("hide");
-    });
+    onLoad(() => displayContent());
 
     // Draw black background if dark mode enabled
     const theme = getTheme();
@@ -347,10 +349,7 @@ scene("musicBall", () => {
     const {x: cWidth, y: cHeight} = center();
 
     // Display html content after loading
-    onLoad(() => {
-        header.classList.remove("hide");
-        buttonDiv.classList.remove("hide");
-    });
+    onLoad(() => displayContent());
 
     if (Tone.context.state === "running") {
         ballSynth.start();
@@ -594,6 +593,8 @@ scene("musicBall", () => {
 //
 scene("musicStar", () => {
     const {x: cWidth, y: cHeight} = center();
+
+    onLoad(() => displayContent());
 
     const theme = getTheme();
     const bgColor = theme === "dark" ? BLACK : WHITE;

@@ -64,10 +64,6 @@ img {
     height: 100%;
 }
 
-.hide {
-    display: none;
-}
-
 #start-button, #audio-button {
     margin-bottom: 10px;
     min-width: 160px;
@@ -104,4 +100,8 @@ img {
 
 #theme-toggle:hover {
     box-shadow: 2px 2px 7px var(--shadow-more);
+}
+
+.hide {
+    display: none !important;
 }
