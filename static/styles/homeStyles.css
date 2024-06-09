@@ -21,7 +21,6 @@ body, html {
     justify-content: center;
     overflow: hidden;
     font-family: Helvetica, Arial, sans-serif;
-    position: relative;
     color: var(--color-fg);
 }
 
@@ -31,21 +30,20 @@ canvas {
 
 h1 {
     position: absolute;
-    text-align: center;
-    font-size: min(17vh, 18vw);
-    margin-top: 0;
-    white-space: nowrap;
+    left: 0;
+    font-size: 30px;
+    margin: 6px;
+    font-weight: lighter;
 }
 
 #buttons {
     position: absolute;
     display: flex;
     flex-direction: column;
-    margin-top: 20vh;
+    margin-top: 44px;
 }
 
 button {
-    margin-bottom: 10px;
     font-size: 18px;
     background-color: var(--color-bg);
     border-color: var(--color-fg);
@@ -54,7 +52,6 @@ button {
     border-radius: 4px;
     box-shadow: 2px 2px 1px var(--shadow-less);
     padding: 2px;
-    min-width: 160px;
     transition: opacity 3s ease-in-out;
 }
 
@@ -62,35 +59,49 @@ button:hover {
     box-shadow: 2px 2px 10px var(--shadow-more);
 }
 
+img {
+    width: 100%;
+    height: 100%;
+}
+
 .hide {
     display: none;
 }
 
-#shapeSelector {
+#start-button, #audio-button {
+    margin-bottom: 10px;
+    min-width: 160px;
+}
+
+#shape-selector {
     display: flex;
     justify-content: center;
 }
 
-#shapeSelector button {
+#shape-selector button {
     background-color: var(--color--bg);
-    border-width: 0px;
-    box-shadow: 2px 2px 1px rgba(0, 0, 0, 0);
-    min-width: 22px;
+    border: none;
+    box-shadow: none;
+    width: 22px;
+    height: 22px;
+    margin: 2px;
 }
 
-#shapeSelector button:hover {
+#shape-selector button:hover {
     background-color: var(--color-hov);
 }
 
-#themeToggle {
-    min-width: 30px;
+#theme-toggle {
+    width: 30px;
+    height: 30px;
     position: fixed;
-    top: 6px;
-    border-width: 2px;
-    left: calc(100% - 36px);
-    padding: 1px;
+    margin: 6px;
+    border: none;
+    box-shadow: none;
+    left: calc(100% - 42px);
+    padding: 2px;
 }
 
-#themeToggle:hover {
+#theme-toggle:hover {
     box-shadow: 2px 2px 7px var(--shadow-more);
 }

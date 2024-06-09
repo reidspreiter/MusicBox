@@ -7,25 +7,25 @@
     <link rel="stylesheet" href="./static/styles/homeStyles.css">
 </head>
 <body>
-    <canvas id="homeCanvas"></canvas>
+    <canvas id="home-canvas"></canvas>
     <h1 id="header" class="hide">Music Box</h1>
-    <button id="themeToggle">&#9724;</button>
+    <button id="theme-toggle"><img src="./static/graphics/shapes/squarelight.svg"></button>
     <div id="buttons" class="hide">
         <div>
-            <button onclick="" id="startButton">enter</button>
-            <button id="audioButton">enable audio</button>
+            <button onclick="" id="start-button">Enter</button>
+            <button id="audio-button">Enable Audio</button>
         </div>
-        <div id="shapeSelector">
-            <button id="square">&#128915;</button>
-            <button id="circle">&#128901;</button>
-            <button id="star">&#128949;</button>
+        <div id="shape-selector">
+            <button id="square"><img src="./static/graphics/shapes/squarelight.svg"></button>
+            <button id="circle"><img src="./static/graphics/shapes/circleoutlinelight.svg"></button>
+            <button id="star"><img src="./static/graphics/shapes/staroutlinelight.svg"></button>
         </div>
     </div>
     <script src="https://unpkg.com/tone"></script>
     <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
     <script src="./static/scripts/theme.js" type="module"></script>
-    <script src="./static/scripts/utils.js" type="module" ></script>
-    <script src="./static/scripts/synths.js" type="module" ></script>
-    <script src="./static/scripts/musicalShapes.js" type="module" ></script>
+    <script src="./static/scripts/utils.js" type="module"></script>
+    <script src="./static/scripts/synths.js" type="module"></script>
+    <script src="./static/scripts/musicalShapes.js" type="module"></script>
 </body>
 </html>
