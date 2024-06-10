@@ -92,6 +92,7 @@ function mousePress(currDrag, objName) {
     if (!currDrag) {
         for (const obj of get(objName)) {
             if (obj.isHovering()) {
+                setCursor("move");
                 obj.pick();
                 return;
             }
@@ -115,6 +116,7 @@ function baseShapeSize() {
 //
 scene("musicBox", () => {
     const {x: cWidth, y: cHeight} = center();
+    let currDrag = null;
 
     onLoad(() => displayContent());
 
@@ -196,14 +198,19 @@ scene("musicBox", () => {
             pos(slider.left + percent * slider.range, slider.yStart + slider.spacing * i),
             area(),
             sliderDrag(),
+            scale(1),
             "slider",
             `${name}`
         ]);
         sliderBox.onHover(() => {
-            setCursor("move");
+            if (currDrag == null) {
+                sliderBox.scale = vec2(1.2);
+            }
         });
         sliderBox.onHoverEnd(() => {
-            setCursor("default");
+            if (currDrag == null) {
+                sliderBox.scale = vec2(1);
+            }
         });
     });
 
@@ -292,7 +299,6 @@ scene("musicBox", () => {
     }
 
     // Handle slider box drag
-    let currDrag = null;
     function sliderDrag() {
         let xOffset = 0;
         return {
@@ -303,6 +309,9 @@ scene("musicBox", () => {
                 xOffset = mousePos().x - this.pos.x;
             },
             drop() {
+                if (!this.isHovering()) {
+                    this.scale = vec2(1);
+                }
                 currDrag = null;
             },
             update() {
@@ -415,10 +424,14 @@ scene("musicBall", () => {
             `${name}`,
         ]);
         k.onHover(() => {
-            setCursor("move");
+            if (currDrag == null) {
+                k.scale = vec2(knob.scale * 1.2);
+            }
         });
         k.onHoverEnd(() => {
-            setCursor("default");
+            if (currDrag == null) {
+                k.scale = vec2(knob.scale);
+            }
         });
     });
 
@@ -513,6 +526,9 @@ scene("musicBall", () => {
                 yOffset = -(mousePos().y * sensitivity) - this.yOffset;
             },
             drop() {
+                if (!this.isHovering()) {
+                    this.scale = vec2(knob.scale);
+                }
                 currDrag = null;
             },
             update() {
@@ -661,9 +677,11 @@ scene("musicStar", () => {
                 }
             ]);
             s.onHover(() => {
+                s.scale = vec2(sequenceStar.scale * 1.1);
                 setCursor("pointer");
             });
             s.onHoverEnd(() => {
+                s.scale = vec2(sequenceStar.scale);
                 setCursor("default");
             });
             s.onClick(() => {
