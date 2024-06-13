@@ -1,44 +1,48 @@
 import { boxSynth, ballSynth, starSynth } from "./synths.js";
-import { eScale, lScale, clamp, percify, choose, getTheme } from "./utils.js";
+import { lScale, clamp, percify, choose, getTheme } from "./utils.js";
+import { dragSlider, rotateKnob, grab, release, grow, shrink } from "./interactables.js";
+import { boxParams, ballParams } from "./params.js";
 
-const audioButton = document.getElementById("audio-button");
-const squareButton = document.getElementById("square");
-const circleButton = document.getElementById("circle");
-const starButton = document.getElementById("star");
-const header = document.getElementById("header");
-const buttonDiv = document.getElementById("buttons");
-const themeButton = document.getElementById("theme-toggle");
 let currShape = "square";
+let audioEnabled = false;
 
-// Remove enable audio button if already enabled
-document.addEventListener('DOMContentLoaded', () => {
-    if (Tone.context.state === "running") {
-        audioButton.classList.add("hide");
-    }
-    updateScene(false);
-});
+const elems = {
+    audioBtn: document.getElementById("audio-button"),
+    squareBtn: document.getElementById("square"),
+    circleBtn: document.getElementById("circle"),
+    starBtn: document.getElementById("star"),
+    header: document.getElementById("header"),
+    btnDiv: document.getElementById("buttons"),
+    themeBtn: document.getElementById("theme-toggle"),
+}
 
-// Initialize Kaboom
-kaboom({
-    canvas: document.getElementById("home-canvas"), 
-    background: [255, 255, 255],
-});
+elems.squareBtn.addEventListener("click", () => changeShape("square"));
+elems.circleBtn.addEventListener("click", () => changeShape("circle"));
+elems.starBtn.addEventListener("click", () => changeShape("star"));
+elems.themeBtn.addEventListener("click", () => updateScene());
 
-// Initialize Tone.js
-audioButton.addEventListener("click", () => {
+elems.audioBtn.addEventListener("click", () => {
     Tone.start();
-    audioButton.classList.add("hide");
+    elems.audioBtn.classList.add("hide");
+    audioEnabled = true;
 
     if (currShape == 2) {
         ballSynth.synth.start();
     }
 });
 
-// Manage shape select and theme buttons
-squareButton.addEventListener("click", () => changeShape("square"));
-circleButton.addEventListener("click", () => changeShape("circle"));
-starButton.addEventListener("click", () => changeShape("star"));
-themeButton.addEventListener("click", () => updateScene());
+document.addEventListener('DOMContentLoaded', () => {
+    if (Tone.context.state === "running") {
+        elems.audioBtn.classList.add("hide");
+        audioEnabled = true;
+    }
+    updateScene(false);
+});
+
+kaboom({
+    canvas: document.getElementById("home-canvas"), 
+    background: [255, 255, 255],
+});
 
 function changeShape(shape) {
     if (currShape == shape) {
@@ -50,30 +54,30 @@ function changeShape(shape) {
 
 function updateScene(refreshScene = true) {
     const theme = getTheme();
-    themeButton.innerHTML = `<img src="./static/graphics/shapes/${currShape}${theme}.svg"></img>`;
-    squareButton.innerHTML = `<img src="./static/graphics/shapes/squareoutline${theme}.svg"></img>`;
-    circleButton.innerHTML = `<img src="./static/graphics/shapes/circleoutline${theme}.svg"></img>`;
-    starButton.innerHTML = `<img src="./static/graphics/shapes/staroutline${theme}.svg"></img>`;
+    elems.themeBtn.innerHTML = `<img src="./static/graphics/shapes/${currShape}${theme}.svg"></img>`;
+    elems.squareBtn.innerHTML = `<img src="./static/graphics/shapes/squareoutline${theme}.svg"></img>`;
+    elems.circleBtn.innerHTML = `<img src="./static/graphics/shapes/circleoutline${theme}.svg"></img>`;
+    elems.starBtn.innerHTML = `<img src="./static/graphics/shapes/staroutline${theme}.svg"></img>`;
 
     if (currShape == "square") {
-        squareButton.innerHTML = `<img src="./static/graphics/shapes/square${theme}.svg"></img>`;
-        header.innerText = "Music Box";
-        refreshScene? go("musicBox") : 0;
+        elems.squareBtn.innerHTML = `<img src="./static/graphics/shapes/square${theme}.svg"></img>`;
+        elems.header.innerText = "Music Box";
+        if (refreshScene) go("musicBox");
     } else if (currShape == "circle") {
-        circleButton.innerHTML = `<img src="./static/graphics/shapes/circle${theme}.svg"></img>`;
-        header.innerText = "Music Ball";
-        refreshScene? go("musicBall") : 0;
+        elems.circleBtn.innerHTML = `<img src="./static/graphics/shapes/circle${theme}.svg"></img>`;
+        elems.header.innerText = "Music Ball";
+        if (refreshScene) go("musicBall");
     } else {
-        starButton.innerHTML = `<img src="./static/graphics/shapes/star${theme}.svg"></img>`;
-        header.innerText = "Music Star";
-        refreshScene? go("musicStar") : 0;
+        elems.starBtn.innerHTML = `<img src="./static/graphics/shapes/star${theme}.svg"></img>`;
+        elems.header.innerText = "Music Star";
+        if (refreshScene) go("musicStar");
     }
 }
 
 function displayContent() {
-    header.classList.remove("hide");
-    buttonDiv.classList.remove("hide");
-    themeButton.classList.remove("hide");
+    elems.header.classList.remove("hide");
+    elems.btnDiv.classList.remove("hide");
+    elems.themeBtn.classList.remove("hide");
 }
 
 function drawBackground(theme) {
@@ -87,26 +91,6 @@ function drawBackground(theme) {
     }
 }
 
-// Pick and release dragged objects
-function mousePress(currDrag, objName) {
-    if (!currDrag) {
-        for (const obj of get(objName)) {
-            if (obj.isHovering()) {
-                setCursor("move");
-                obj.pick();
-                return;
-            }
-        }
-    }
-}
-
-function mouseRelease(currDrag) {
-    if (currDrag) {
-        currDrag.drop();
-        setCursor("default");
-    }
-}
-
 function baseShapeSize() {
     return Math.max(width() / 8, height() / 8);
 }
@@ -116,15 +100,18 @@ function baseShapeSize() {
 //
 scene("musicBox", () => {
     const {x: cWidth, y: cHeight} = center();
-    let currDrag = null;
 
     onLoad(() => displayContent());
+    onMousePress(() => grab("slider"));
+    onMouseRelease(() => release());
 
     // Draw black background if dark mode enabled
     const theme = getTheme();
     const bgColor = theme == "dark" ? BLACK : WHITE;
     const fgColor = theme == "dark" ? WHITE : BLACK;
     drawBackground(theme);
+
+    boxParams.setup(cHeight);
 
     // Load notation sprites
     const notation = [
@@ -197,70 +184,49 @@ scene("musicBox", () => {
             anchor("center"),
             pos(slider.left + percent * slider.range, slider.yStart + slider.spacing * i),
             area(),
-            sliderDrag(),
+            dragSlider(),
             scale(1),
             "slider",
-            `${name}`
+            `${name}`,
+            {
+                min: slider.left,
+                max: slider.right,
+                originalScale: 1,
+                sliderAction: action,
+            },
         ]);
-        sliderBox.onHover(() => {
-            if (currDrag == null) {
-                sliderBox.scale = vec2(1.2);
-            }
-        });
-        sliderBox.onHoverEnd(() => {
-            if (currDrag == null) {
-                sliderBox.scale = vec2(1);
-            }
-        });
+        sliderBox.onHover(() => grow(sliderBox, 1));
+        sliderBox.onHoverEnd(() => shrink(sliderBox, 1));
     });
 
-    // Recursively spawn notes based on slider values
-    const rate = {
-        lMin: 0.05,
-        lMax: 1,
-        uMin: 0.1,
-        uMax: 2,
-    };
-    rate.lVal = eScale(rate.lMin, rate.lMax, 0.5);
-    rate.uVal = eScale(rate.uMin, rate.uMax, 0.5);
-
-    const offset = {
-        min: 10,
-        max: cHeight - 10,
-    };
-    offset.val = eScale(offset.min, offset.max, 0.7);
-
-    const size = {
-        lMin: 0.015,
-        lMax: 0.027,
-        uMin: 0.025,
-        uMax: 0.046,
-    };
-    size.lVal = eScale(size.lMin, size.lMax, 0.7);
-    size.uVal = eScale(size.uMin, size.uMax, 0.7);
-
-    const angle = {
-        lMin: -110,
-        lMax: -25,
-        uMin: -55,
-        uMax: 25,
-        lVal: -25,
-        uVal: 25,
-    };
+    function action(perc) {
+        if (this.is("rate")) {
+            boxParams.rate.update(perc);
+        } else if (this.is("freq")) {
+            boxSynth.setFreq(perc);
+            boxParams.angle.update(perc);
+        } else if (this.is("verb")) {
+            boxSynth.setVerbWet(perc);
+            boxParams.size.update(perc);
+        } else {
+            boxSynth.setDelWet(perc);
+            boxParams.offset.update(perc);
+        }
+    }
 
     const xPos = width() + 30;
     function spawnNote() {
         const noteType = choose(notation);
         const duration = Number(noteType.substring(0, noteType.length - 2));
         const speed = rand(20, 31) * duration;
-        const yPos = rand(cHeight - offset.val, cHeight + offset.val + 1);
+        const yPos = rand(cHeight - boxParams.offset.val, cHeight + boxParams.offset.val + 1);
 
         add([
             pos(xPos, yPos),
             sprite(noteType),
             anchor("center"),
-            scale(rand(size.lVal, size.uVal)),
-            rotate(rand(angle.lVal, angle.uVal)),
+            scale(boxParams.randof("size")),
+            rotate(boxParams.randof("angle")),
             area(),
             move(box.pos.angle(xPos, yPos), speed),
             "note",
@@ -268,7 +234,7 @@ scene("musicBox", () => {
                 dur: duration,
             },
         ]);
-        wait(rand(rate.lVal, rate.uVal), spawnNote);
+        wait(boxParams.randof("rate"), spawnNote);
     }
     spawnNote();
 
@@ -289,7 +255,7 @@ scene("musicBox", () => {
             outline(1, fgColor),
         ]);
 
-        if (Tone.context.state === "running") {
+        if (audioEnabled) {
             if (duration < 4) {
                 boxSynth.playLow(duration);
             } else {
@@ -297,55 +263,6 @@ scene("musicBox", () => {
             }
         }
     }
-
-    // Handle slider box drag
-    function sliderDrag() {
-        let xOffset = 0;
-        return {
-            id: "drag",
-            require: ["pos", "area"],
-            pick() {
-                currDrag = this;
-                xOffset = mousePos().x - this.pos.x;
-            },
-            drop() {
-                if (!this.isHovering()) {
-                    this.scale = vec2(1);
-                }
-                currDrag = null;
-            },
-            update() {
-                if (currDrag !== this) {
-                    return;
-                }
-                const newXPos = clamp(slider.left, slider.right, mousePos().x - xOffset);
-                const perc = (newXPos - slider.left) / slider.range;
-                this.pos.x = newXPos;
-
-                if (this.is("rate")) {
-                    rate.lVal = eScale(rate.lMin, rate.lMax, 1 - perc);
-                    rate.uVal = eScale(rate.uMin, rate.uMax, 1 - perc);
-                } else if (this.is("freq")) {
-                    boxSynth.setFreq(perc);
-                    if (perc <= 0.6) {
-                        const newPerc = map(perc, 0, 0.6, 0, 1);
-                        angle.lVal = lScale(angle.lMin, angle.lMax, newPerc);
-                        angle.uVal = lScale(angle.uMin, angle.uMax, newPerc);
-                    }
-                } else if (this.is("verb")) {
-                    boxSynth.setVerbWet(perc);
-                    size.lVal = eScale(size.lMin, size.lMax, 1 - perc);
-                    size.uVal = eScale(size.uMin, size.uMax, 1 - perc);
-                } else {
-                    boxSynth.setDelWet(perc);
-                    offset.val = eScale(offset.min, offset.max, perc);
-                }
-            },
-        }
-    }
-
-    onMousePress(() => mousePress(currDrag, "slider"));
-    onMouseRelease(() => mouseRelease(currDrag));
 
     // Save slider data
     onSceneLeave(() => {
@@ -372,8 +289,11 @@ scene("musicBox", () => {
 //
 scene("musicBall", () => {
     const {x: cWidth, y: cHeight} = center();
+    let currDrag = null;
 
     onLoad(() => displayContent());
+    onMousePress(() => grab("knob"));
+    onMouseRelease(() => release());
 
     if (Tone.context.state === "running") {
         ballSynth.start();
@@ -398,7 +318,7 @@ scene("musicBall", () => {
     
     const numParams = Object.keys(ballSynth.params).length;
     const knob = {
-        spriteDiameter: 617,
+        spriteDiameter: 241.890,
         min: -120,
         max: 120,
     };
@@ -414,25 +334,21 @@ scene("musicBall", () => {
             pos(knob.xStart + knob.diameter * 1.25 * i, knob.y),
             rotate(lScale(knob.min, knob.max, percent)),
             scale(knob.scale),
-            knobDrag(),
+            rotateKnob(),
             area(),
             z(2),
             {
+                min: knob.min,
+                max: knob.max,
+                originalScale: knob.scale,
                 yOffset: lScale(knob.min, knob.max, percent),
+                knobAction: action,
             },
             "knob",
             `${name}`,
         ]);
-        k.onHover(() => {
-            if (currDrag == null) {
-                k.scale = vec2(knob.scale * 1.2);
-            }
-        });
-        k.onHoverEnd(() => {
-            if (currDrag == null) {
-                k.scale = vec2(knob.scale);
-            }
-        });
+        k.onHover(() => grow(k, knob.scale));
+        k.onHoverEnd(() => shrink(k, knob.scale));
     });
 
     // Spawn rotating ball sprites
@@ -443,49 +359,18 @@ scene("musicBall", () => {
     };
     ballSprite.scale = ballSprite.diameter / ballSprite.spriteDiameter;
 
-    const size = {
-        min: ballSprite.scale / 10,
-        max: ballSprite.scale,
-    };
-    size.val = lScale(size.min, size.max, ballSynth.params.vol);
-
-    const radius = {
-        min: ball.radius + ballSprite.diameter / 1.5,
-        max: Math.min(cHeight, cWidth) + 50,
-    };
-    radius.val = lScale(radius.min, radius.max, ballSynth.params.verb);
-
-    const oblong = {
-        min: 0,
-        max: radius.val - ball.radius / 2,
-    }
-    oblong.val = lScale(oblong.min, oblong.max, 1 - ballSynth.params.freq);
-
-    const speed = {
-        min: 0.2,
-        max: 20,
-    };
-    speed.val = lScale(speed.min, speed.max, ballSynth.params.pitch);
-
-    const deviation = {
-        min: 0, 
-        max: ballSprite.diameter * 2,
-    };
-    deviation.val = eScale(deviation.min, deviation.max, ballSynth.params.dist);
-
-    const rotation = {
-        min: 40,
-        max: 2000,
-    };
-    rotation.val = lScale(rotation.min, rotation.max, ballSynth.params.vib);
+    ballParams.setup(
+        ballSprite.scale, ballSynth.params.vol, ball.radius, ballSprite.diameter,
+        cHeight, cWidth, ballSynth.params.verb, ballSynth.params.freq,
+        ballSynth.params.pitch, ballSynth.params.dist, ballSynth.params.vib, 
+    );
 
     for (let i = 0; i < 4; i++) {
         add([
             sprite("ball"),
             anchor("center"),
-            pos(center().add(Vec2.fromAngle(90 * i).scale(radius.val))),
-            opacity(opacity.val),
-            scale(size.val),
+            pos(center().add(Vec2.fromAngle(90 * i).scale(ballParams.radius.val))),
+            scale(ballParams.size.val),
             rotate(0),
             z(1),
             {
@@ -497,9 +382,9 @@ scene("musicBall", () => {
 
     // Orbit and rotate each sprite
     onUpdate("ballSprite", (ballSprite) => {
-        ballSprite.orbPos += dt() * speed.val;
-        const xPos = cWidth + radius.val * Math.cos(ballSprite.orbPos);
-        const yPos = cHeight + (radius.val - oblong.val) * Math.sin(ballSprite.orbPos);
+        ballSprite.orbPos += dt() * ballParams.speed.val;
+        const xPos = cWidth + ballParams.radius.val * Math.cos(ballSprite.orbPos);
+        const yPos = cHeight + (ballParams.radius.val - ballParams.oblong.val) * Math.sin(ballSprite.orbPos);
 
         if (ballSprite.pos.y < cHeight) {
             ballSprite.z = -1;
@@ -507,72 +392,38 @@ scene("musicBall", () => {
             ballSprite.z = 1;
         }
 
-        ballSprite.pos.x = xPos + rand(-deviation.val, deviation.val);
-        ballSprite.pos.y = yPos + rand(-deviation.val, deviation.val);
-        ballSprite.angle += rotation.val * dt();
+        ballSprite.pos.x = xPos + rand(-ballParams.deviation.val, ballParams.deviation.val);
+        ballSprite.pos.y = yPos + rand(-ballParams.deviation.val, ballParams.deviation.val);
+        ballSprite.angle += ballParams.rotation.val * dt();
     });
 
-    // Handle knob rotation
-    let currDrag = null;
-    let currOblongPerc = 1 - ballSynth.params.freq;
-    const sensitivity = 3;
-    function knobDrag() {
-        let yOffset = 0;
-        return {
-            id: "drag",
-            require: ["pos", "area"],
-            pick() {
-                currDrag = this;
-                yOffset = -(mousePos().y * sensitivity) - this.yOffset;
-            },
-            drop() {
-                if (!this.isHovering()) {
-                    this.scale = vec2(knob.scale);
-                }
-                currDrag = null;
-            },
-            update() {
-                if (currDrag !== this) {
-                    return;
-                }
-                const newAngle = clamp(knob.min, knob.max, -(mousePos().y * sensitivity) - yOffset);
-                this.angle = newAngle;
-                this.yOffset = newAngle;
-                const perc = percify(knob.min, knob.max, newAngle);
-
-                if (this.is("pitch")) {
-                    ballSynth.setPitch(perc);
-                    speed.val = lScale(speed.min, speed.max, perc);
-                } else if (this.is("freq")) {
-                    ballSynth.setFreq(perc);
-                    currOblongPerc = 1 - perc;
-                    oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
-                } else if (this.is("dist")) {
-                    ballSynth.setDist(perc);
-                    deviation.val = eScale(deviation.min, deviation.max, perc);
-                } else if (this.is("vib")) {
-                    ballSynth.setVibFreq(perc);
-                    ballSynth.setVibDepth(perc);
-                    rotation.val = lScale(rotation.min, rotation.max, perc);
-                } else if (this.is("verb")) {
-                    ballSynth.setVerbWet(perc);
-                    radius.val = lScale(radius.min, radius.max, perc);
-                    oblong.max = radius.val - ball.radius / 2;
-                    oblong.val = lScale(oblong.min, oblong.max, currOblongPerc);
-                } else {
-                    ballSynth.setVol(perc);
-                    const newScale = lScale(size.min, size.max, perc);
-                    const balls = get("ballSprite");
-                    balls.forEach(orbitingBall => {
-                        orbitingBall.scale = newScale;
-                    });
-                }
-            },
+    function action(perc) {
+        if (this.is("pitch")) {
+            ballSynth.setPitch(perc);
+            ballParams.speed.update(perc);
+        } else if (this.is("freq")) {
+            ballSynth.setFreq(perc);
+            ballParams.oblong.update(perc);
+        } else if (this.is("dist")) {
+            ballSynth.setDist(perc);
+            ballParams.deviation.update(perc);
+        } else if (this.is("vib")) {
+            ballSynth.setVibFreq(perc);
+            ballSynth.setVibDepth(perc);
+            ballParams.rotation.update(perc);
+        } else if (this.is("verb")) {
+            ballSynth.setVerbWet(perc);
+            ballParams.radius.update(perc);
+            ballParams.coordinateOblongWithRadius(ball.radius);
+        } else {
+            ballSynth.setVol(perc);
+            ballParams.size.update(perc);
+            const balls = get("ballSprite");
+            balls.forEach(orbitingBall => {
+                orbitingBall.scale = ballParams.size.val;
+            });
         }
     }
-
-    onMousePress(() => mousePress(currDrag, "knob"));
-    onMouseRelease(() => mouseRelease(currDrag));
 
     // Stop synth and save knob data
     onSceneLeave(() => {
@@ -603,15 +454,23 @@ scene("musicBall", () => {
 //
 scene("musicStar", () => {
     const {x: cWidth, y: cHeight} = center();
+    let currDrag = null;
 
     onLoad(() => displayContent());
+    onMousePress(() => mousePress(currDrag, "knob"));
+    onMouseRelease(() => mouseRelease(currDrag));
 
     const theme = getTheme();
     const fgColor = theme == "dark" ? WHITE : BLACK;
     drawBackground(theme);
 
-    loadSprite("starOutline", `./static/graphics/shapes/staroutline${theme}.svg`)
+    loadSprite("starOutline", `./static/graphics/shapes/staroutline${theme}.svg`);
     loadSprite("star", `./static/graphics/shapes/star${theme}.svg`);
+    loadSprite("arrow", `./static/graphics/misc/arrow${theme}.svg`);
+    loadSprite("arrowOutline", `./static/graphics/misc/arrowoutline${theme}.svg`);
+    loadSprite("skip", `./static/graphics/misc/skip${theme}.svg`);
+    loadSprite("skipOpen", `./static/graphics/misc/skipopen${theme}.svg`);
+    loadSprite("knob", `./static/graphics/misc/knob${theme}.svg`);
 
     // Center star
     const starSprite = {
@@ -630,14 +489,20 @@ scene("musicStar", () => {
 
     // Sequencer
     const sequenceStar = {
-        region: Math.min(height(), width()),
+        region: Math.min(height(), width()) - 20,
     }
-    sequenceStar.size = sequenceStar.region / 14;
+    sequenceStar.size = sequenceStar.region / 18;
     sequenceStar.pointWidth = 49.135 / 241.890 * sequenceStar.size;
-    sequenceStar.margin = sequenceStar.size * 2 / 11;
-    sequenceStar.xStart = cWidth - sequenceStar.margin * 5.5 - sequenceStar.size * 5.5;
+    sequenceStar.margin = sequenceStar.size * 2 / 15;
+    sequenceStar.xStart = cWidth - sequenceStar.margin * 7.5 - sequenceStar.size * 7.5;
     sequenceStar.yStart = height() - 64 - sequenceStar.margin - sequenceStar.size;
     sequenceStar.scale = sequenceStar.size / starSprite.size;
+
+    const knob = {
+        min: -120,
+        max: 120,
+    }
+
     function fillSequenceStar(xPos, yPos, i, j) {
         starSynth.sequencer[i][j] = true;
         add([
@@ -650,48 +515,235 @@ scene("musicStar", () => {
         ]);
     }
 
+    function fillArrow(xPos, yPos, i) {
+        add([
+            sprite("arrow"),
+            anchor("center"),
+            pos(xPos, yPos),
+            scale(sequenceStar.scale),
+            area(),
+            `arrow${i}`,
+        ]);
+    }
+
+    function fillSkip(xPos, yPos, i) {
+        add([
+            sprite("skip"),
+            anchor("center"),
+            pos(xPos, yPos),
+            scale(sequenceStar.scale),
+            area(),
+            `skip${i}`,
+        ]);
+    }
+
     function hollowSequenceStar(i, j) {
         starSynth.sequencer[i][j] = false;
         const starFilling = get(`${i}${j}`);
         destroy(starFilling[0]);
     }
 
+    function hollowArrow(i) {
+        const arrowFilling = get(`arrow${i}`);
+        destroy(arrowFilling[0]);
+    }
+
+    function hollowSkip(i) {
+        const skipFilling = get(`skip${i}`);
+        destroy(skipFilling[0]);
+    }
+
     // Draw sequence buttons
     for (let i = 0; i < 2; i++) {
         const yPos = sequenceStar.yStart + i * (sequenceStar.margin + sequenceStar.size)
-        for (let j = 0; j < 12; j++) {
+        for (let j = 0; j < 16; j++) {
             const xPos = sequenceStar.xStart + j * (sequenceStar.size + sequenceStar.margin);
-            starSynth.sequencer[i][j] ? fillSequenceStar(xPos, yPos, i, j) : 0;
-            const s = add([
-                sprite("starOutline"),
-                anchor("center"),
-                pos(xPos, yPos),
-                scale(sequenceStar.scale),
-                area(),
-                {
-                    x: xPos,
-                    y: yPos,
-                    active: starSynth.sequencer[i][j] ? true : false,
-                    i: i,
-                    j: j,
+            // spawn star buttons
+            if (1 < j && j < 14) {
+                if (starSynth.sequencer[i][j]) fillSequenceStar(xPos, yPos, i, j);
+                const s = add([
+                    sprite("starOutline"),
+                    anchor("center"),
+                    pos(xPos, yPos),
+                    scale(sequenceStar.scale),
+                    area(),
+                    {
+                        x: xPos,
+                        y: yPos,
+                        active: starSynth.sequencer[i][j] ? true : false,
+                        i: i,
+                        j: j,
+                    }
+                ]);
+                s.onHover(() => {
+                    s.scale = vec2(sequenceStar.scale * 1.1);
+                    setCursor("pointer");
+                });
+                s.onHoverEnd(() => {
+                    s.scale = vec2(sequenceStar.scale);
+                    setCursor("default");
+                });
+                s.onClick(() => {
+                    if (s.active) {
+                        hollowSequenceStar(s.i, s.j);
+                    } else {
+                        fillSequenceStar(s.x, s.y, s.i, s.j);
+                    }
+                    s.active = !s.active;
+                });
+            } else if (j == 0) {
+                // spawn tempo knobs
+                const k = add([
+                    sprite("knob"),
+                    anchor("center"),
+                    pos(xPos, yPos),
+                    scale(sequenceStar.scale),
+                    area(),
+                    knobDrag(),
+                    "knob",
+                    `${i}`,
+                    {
+                        yOffset: 0,
+                    }
+
+                ]);
+                k.onHover(() => {
+                    if (currDrag == null) {
+                        k.scale = vec2(sequenceStar.scale * 1.2);
+                    }
+                });
+                k.onHoverEnd(() => {
+                    if (currDrag == null) {
+                        k.scale = vec2(sequenceStar.scale);
+                    }
+                });
+            } else if (j == 1) {
+                const a = add([
+                    sprite("arrowOutline"),
+                    anchor("center"),
+                    pos(xPos, yPos),
+                    scale(sequenceStar.scale),
+                    area(),
+                    "arrow",
+                    {
+                        x: xPos,
+                        y: yPos,
+                        active: false,
+                        i: i,
+                        j: j,
+                    },
+                ]);
+                a.onHover(() => {
+                    a.scale = vec2(sequenceStar.scale * 1.1);
+                    setCursor("pointer");
+                });
+                a.onHoverEnd(() => {
+                    a.scale = vec2(sequenceStar.scale);
+                    setCursor("default");
+                });
+                a.onClick(() => {
+                    if (a.active) {
+                        hollowArrow(a.i);
+                    } else {
+                        fillArrow(a.x, a.y, a.i);
+                    }
+                    a.active = !a.active;
+                });
+            } else if (j == 14) {
+                // spawn skip buttons
+                const s = add([
+                    sprite("skipOpen"),
+                    anchor("center"),
+                    pos(xPos, yPos),
+                    scale(sequenceStar.scale),
+                    area(),
+                    "skip",
+                    {
+                        x: xPos,
+                        y: yPos,
+                        active: false,
+                        i: i,
+                        j: j,
+                    },
+                ]);
+                s.onHover(() => {
+                    s.scale = vec2(sequenceStar.scale * 1.1);
+                    setCursor("pointer");
+                });
+                s.onHoverEnd(() => {
+                    s.scale = vec2(sequenceStar.scale);
+                    setCursor("default");
+                });
+                s.onClick(() => {
+                    if (s.active) {
+                        hollowSkip(s.i);
+                    } else {
+                        fillSkip(s.x, s.y, s.i);
+                    }
+                    s.active = !s.active;
+                });
+            } else {
+                // spawn direction arrows
+                const a = add([
+                    sprite("arrow"),
+                    anchor("center"),
+                    pos(xPos, yPos),
+                    scale(sequenceStar.scale),
+                    rotate(90),
+                    area(),
+                    "direction",
+                    {
+                        x: xPos,
+                        y: yPos,
+                        active: false,
+                        i: i,
+                        j: j,
+                    },
+                ]);
+                a.onHover(() => {
+                    a.scale = vec2(sequenceStar.scale * 1.1);
+                    setCursor("pointer");
+                });
+                a.onHoverEnd(() => {
+                    a.scale = vec2(sequenceStar.scale);
+                    setCursor("default");
+                });
+                a.onClick(() => {
+                    if (a.active) {
+                        a.angle = 90;
+                    } else {
+                        a.angle = -90;
+                    }
+                    a.active = !a.active;
+                });
+            }
+        }
+    }
+
+    const sensitivity = 3;
+    function knobDrag() {
+        let yOffset = 0;
+        return {
+            id: "drag",
+            require: ["pos", "area"],
+            pick() {
+                currDrag = this;
+                yOffset = -(mousePos().y * sensitivity) - this.yOffset;
+            },
+            drop() {
+                if (!this.isHovering()) {
+                    this.scale = vec2(sequenceStar.scale);
                 }
-            ]);
-            s.onHover(() => {
-                s.scale = vec2(sequenceStar.scale * 1.1);
-                setCursor("pointer");
-            });
-            s.onHoverEnd(() => {
-                s.scale = vec2(sequenceStar.scale);
-                setCursor("default");
-            });
-            s.onClick(() => {
-                if (s.active) {
-                    hollowSequenceStar(s.i, s.j);
-                } else {
-                    fillSequenceStar(s.x, s.y, s.i, s.j);
+                currDrag = null;
+            },
+            update() {
+                if (currDrag !== this) {
+                    return;
                 }
-                s.active = !s.active;
-            });
+                const newAngle = clamp(knob.min, knob.max, -(mousePos().y * sensitivity) - yOffset);
+                this.angle = newAngle;
+                this.yOffset = newAngle;
+            },
         }
     }
 
@@ -702,7 +754,7 @@ scene("musicStar", () => {
     const topPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
-        pos(sequenceStar.xStart, sequenceStar.yStart - sequenceStar.size * 0.8),
+        pos(sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2, sequenceStar.yStart - sequenceStar.size * 0.8),
         color(fgColor),
     ]);
 
@@ -712,7 +764,7 @@ scene("musicStar", () => {
     const bottomPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
-        pos(sequenceStar.xStart, sequenceStar.yStart + sequenceStar.margin + sequenceStar.size * 1.8),
+        pos(sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2, sequenceStar.yStart + sequenceStar.margin + sequenceStar.size * 1.8),
         color(fgColor),
     ]);
 
@@ -722,8 +774,8 @@ scene("musicStar", () => {
         topStep++;
         bottomStep++;
         if (topStep > 11) {
-            topPlayhead.pos.x = sequenceStar.xStart;
-            bottomPlayhead.pos.x = sequenceStar.xStart;
+            topPlayhead.pos.x = sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2;
+            bottomPlayhead.pos.x = sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2;
             topStep = 0;
             bottomStep = 0
         } else {

@@ -94,10 +94,10 @@ export const boxSynth = {
         reverb.e.wet.value = eScale(reverb.min, reverb.max, perc);
     },
     playHigh: (duration) => {
-        highSynth.triggerAttackRelease(choose(highPitches), `${duration}n`);
+        highSynth.triggerAttackRelease(choose(highPitches), `${duration}n`, "+0.05");
     },
     playLow: (duration) => {
-        lowSynth.triggerAttackRelease(choose(lowPitches), `${duration}n`);
+        lowSynth.triggerAttackRelease(choose(lowPitches), `${duration}n`, "+0.05");
     },
     stop: () => {
         highSynth.triggerRelease();
