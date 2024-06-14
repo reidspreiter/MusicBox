@@ -79,7 +79,7 @@ export const ballParams = {
         },
         reflectRadius: function(currRadius, ballRadius) {
             this.max = currRadius - ballRadius / 2;
-            this.update(this.perc);
+            this.val = lScale(this.min, this.max, this.perc);
         },
     },
     coordinateOblongWithRadius: function(ballRadius) {

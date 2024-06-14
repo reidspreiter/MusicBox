@@ -32,7 +32,7 @@ export function shrink(obj) {
     }
 }
 
-export function dragSlider() {
+export function moveSlider() {
     let xOffset = 0;
     return {
         id: "drag",
@@ -52,22 +52,25 @@ export function dragSlider() {
                 return;
             }
             const newXPos = clamp(this.min, this.max, mousePos().x - xOffset);
-            const perc = percify(this.min, this.max, newXPos);
-            this.pos.x = newXPos;
-            this.sliderAction(perc);
+            if (this.pos.x != newXPos) {
+                const perc = percify(this.min, this.max, newXPos);
+                this.pos.x = newXPos;
+                this.currVal = newXPos;
+                this.sliderAction(perc);
+            }
         },
     }
 }
 
 const sensitivity = 3;
-export function rotateKnob() {
+export function moveKnob() {
     let yOffset = 0;
     return {
         id: "rotate",
         require: ["pos", "area"],
         pick() {
             currDrag = this;
-            yOffset = -(mousePos().y * sensitivity) - this.yOffset;
+            yOffset = -(mousePos().y * sensitivity) - this.currVal;
         },
         drop() {
             currDrag = null;
@@ -80,10 +83,12 @@ export function rotateKnob() {
                 return;
             }
             const newAngle = clamp(this.min, this.max, -(mousePos().y * sensitivity) - yOffset);
-            this.angle = newAngle;
-            this.yOffset = newAngle;
-            const perc = percify(this.min, this.max, newAngle);
-            this.knobAction(perc);
+            if (this.angle != newAngle) {
+                this.angle = newAngle;
+                this.currVal = newAngle;
+                const perc = percify(this.min, this.max, newAngle);
+                this.knobAction(perc);
+            }
         },
     }
 }

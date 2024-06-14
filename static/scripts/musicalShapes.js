@@ -1,6 +1,6 @@
 import { boxSynth, ballSynth, starSynth } from "./synths.js";
-import { lScale, clamp, percify, choose, getTheme } from "./utils.js";
-import { dragSlider, rotateKnob, grab, release, grow, shrink } from "./interactables.js";
+import { lScale, clamp, percify, choose, getTheme, randBipolar, saveToContainer } from "./utils.js";
+import { moveSlider, moveKnob, grab, release, grow, shrink } from "./interactables.js";
 import { boxParams, ballParams } from "./params.js";
 
 let currShape = "square";
@@ -129,12 +129,6 @@ scene("musicBox", () => {
     // Center box
     const boxSize = baseShapeSize();
     const boxHalf = boxSize / 2;
-    const boxSides = {
-        left: cWidth - boxHalf,
-        right: cWidth + boxHalf,
-        top: cHeight - boxHalf,
-        bottom: cHeight + boxHalf,
-    };
     const box = add([
         rect(boxSize, boxSize),
         anchor("center"),
@@ -166,11 +160,11 @@ scene("musicBox", () => {
     const bottomMargin = (availableSliderSpace - slider.size * 4) / 3;
     slider.spacing = bottomMargin + slider.size;
     slider.yStart = cHeight + boxHalf + (cHeight - boxHalf - availableSliderSpace) / 2 + slider.size / 2;
-    slider.left = boxSides.left + slider.size / 2;
-    slider.right = boxSides.right - slider.size / 2;
+    slider.left = cWidth - boxHalf + slider.size / 2;
+    slider.right = cWidth + boxHalf - slider.size / 2;
     slider.range = slider.right - slider.left;
     
-    Object.entries(boxSynth.params).forEach(([name, percent], i) => {
+    Object.entries(boxSynth.params).forEach(([param, percent], i) => {
         add([
             rect(slider.range, 2),
             color(fgColor),
@@ -184,33 +178,37 @@ scene("musicBox", () => {
             anchor("center"),
             pos(slider.left + percent * slider.range, slider.yStart + slider.spacing * i),
             area(),
-            dragSlider(),
-            scale(1),
+            moveSlider(),
             "slider",
-            `${name}`,
             {
+                param: param,
                 min: slider.left,
                 max: slider.right,
+                currVal: slider.left + percent * slider.range,
                 originalScale: 1,
-                sliderAction: action,
+                sliderAction: updateParams,
             },
         ]);
         sliderBox.onHover(() => grow(sliderBox, 1));
         sliderBox.onHoverEnd(() => shrink(sliderBox, 1));
     });
 
-    function action(perc) {
-        if (this.is("rate")) {
-            boxParams.rate.update(perc);
-        } else if (this.is("freq")) {
-            boxSynth.setFreq(perc);
-            boxParams.angle.update(perc);
-        } else if (this.is("verb")) {
-            boxSynth.setVerbWet(perc);
-            boxParams.size.update(perc);
-        } else {
-            boxSynth.setDelWet(perc);
-            boxParams.offset.update(perc);
+    function updateParams(perc) {
+        switch (this.param) {
+            case "rate":
+                boxParams.rate.update(perc);
+                break;
+            case "freq":
+                boxSynth.setFreq(perc);
+                boxParams.angle.update(perc);
+                break;
+            case "verb":
+                boxSynth.setVerbWet(perc);
+                boxParams.size.update(perc);
+                break;
+            default:
+                boxSynth.setDelWet(perc);
+                boxParams.offset.update(perc);
         }
     }
 
@@ -219,7 +217,7 @@ scene("musicBox", () => {
         const noteType = choose(notation);
         const duration = Number(noteType.substring(0, noteType.length - 2));
         const speed = rand(20, 31) * duration;
-        const yPos = rand(cHeight - boxParams.offset.val, cHeight + boxParams.offset.val + 1);
+        const yPos = randBipolar(cHeight, boxParams.offset.val);
 
         add([
             pos(xPos, yPos),
@@ -240,15 +238,15 @@ scene("musicBox", () => {
 
     // Update music box and play note
     function playNote(duration) {
-        const durationSize = boxHalf / duration;
-        const rectSize =  durationSize < 2 ? 2 : durationSize;
+        let rectSize = boxHalf / duration;
+        if (rectSize < 2) rectSize = 2;
         const rectHalf = rectSize / 2;
         add([
             rect(rectSize, rectSize),
             anchor("center"),
             pos(
-                rand(boxSides.left + rectHalf + 2, boxSides.right - rectHalf - 2),
-                rand(boxSides.top + rectHalf + 2, boxSides.bottom - rectHalf - 2),
+                randBipolar(cWidth, boxHalf - rectHalf - 2),
+                randBipolar(cHeight, boxHalf - rectHalf - 2),
             ),
             lifespan(1 / (duration + 1) + 0.1),
             color(bgColor),
@@ -266,21 +264,10 @@ scene("musicBox", () => {
 
     // Save slider data
     onSceneLeave(() => {
-        if (Tone.context.state === "running") {
+        if (audioEnabled) {
             boxSynth.stop();
         }
-        const sliders = get("slider");
-        sliders.forEach(obj => {
-            if (obj.is("rate")) {
-                boxSynth.params.rate = percify(slider.left, slider.right, obj.pos.x);
-            } else if (obj.is("freq")) {
-                boxSynth.params.freq = percify(slider.left, slider.right, obj.pos.x);
-            } else if (obj.is("verb")) {
-                boxSynth.params.verb = percify(slider.left, slider.right, obj.pos.x);
-            } else {
-                boxSynth.params.delay = percify(slider.left, slider.right, obj.pos.x);
-            }
-        });
+        saveToContainer(boxSynth.params, get("slider"));
     });
 });
 
@@ -327,28 +314,28 @@ scene("musicBall", () => {
     knob.y = height() - knob.diameter;
     knob.xStart = cWidth - knob.diameter * 3 - knob.diameter / 8;
 
-    Object.entries(ballSynth.params).forEach(([name, percent], i) => {
+    Object.entries(ballSynth.params).forEach(([param, percent], i) => {
         const k = add([
             sprite("knob"),
             anchor("center"),
             pos(knob.xStart + knob.diameter * 1.25 * i, knob.y),
-            rotate(lScale(knob.min, knob.max, percent)),
             scale(knob.scale),
-            rotateKnob(),
+            moveKnob(),
             area(),
             z(2),
             {
+                param: param, 
                 min: knob.min,
                 max: knob.max,
+                currVal: lScale(knob.min, knob.max, percent),
                 originalScale: knob.scale,
-                yOffset: lScale(knob.min, knob.max, percent),
-                knobAction: action,
+                knobAction: updateParams,
             },
             "knob",
-            `${name}`,
         ]);
-        k.onHover(() => grow(k, knob.scale));
-        k.onHoverEnd(() => shrink(k, knob.scale));
+        k.onHover(() => grow(k));
+        k.onHoverEnd(() => shrink(k));
+        k.angle = lScale(knob.min, knob.max, percent);
     });
 
     // Spawn rotating ball sprites
@@ -392,36 +379,42 @@ scene("musicBall", () => {
             ballSprite.z = 1;
         }
 
-        ballSprite.pos.x = xPos + rand(-ballParams.deviation.val, ballParams.deviation.val);
-        ballSprite.pos.y = yPos + rand(-ballParams.deviation.val, ballParams.deviation.val);
+        ballSprite.pos.x = xPos + randBipolar(0, ballParams.deviation.val);
+        ballSprite.pos.y = yPos + randBipolar(0, ballParams.deviation.val);
         ballSprite.angle += ballParams.rotation.val * dt();
     });
 
-    function action(perc) {
-        if (this.is("pitch")) {
-            ballSynth.setPitch(perc);
-            ballParams.speed.update(perc);
-        } else if (this.is("freq")) {
-            ballSynth.setFreq(perc);
-            ballParams.oblong.update(perc);
-        } else if (this.is("dist")) {
-            ballSynth.setDist(perc);
-            ballParams.deviation.update(perc);
-        } else if (this.is("vib")) {
-            ballSynth.setVibFreq(perc);
-            ballSynth.setVibDepth(perc);
-            ballParams.rotation.update(perc);
-        } else if (this.is("verb")) {
-            ballSynth.setVerbWet(perc);
-            ballParams.radius.update(perc);
-            ballParams.coordinateOblongWithRadius(ball.radius);
-        } else {
-            ballSynth.setVol(perc);
-            ballParams.size.update(perc);
-            const balls = get("ballSprite");
-            balls.forEach(orbitingBall => {
-                orbitingBall.scale = ballParams.size.val;
-            });
+    function updateParams(perc) {
+        switch (this.param) {
+            case "pitch":
+                ballSynth.setPitch(perc);
+                ballParams.speed.update(perc);
+                break;
+            case "freq":
+                ballSynth.setFreq(perc);
+                ballParams.oblong.update(perc);
+                break;
+            case "dist":
+                ballSynth.setDist(perc);
+                ballParams.deviation.update(perc);
+                break;
+            case "vib":
+                ballSynth.setVibFreq(perc);
+                ballSynth.setVibDepth(perc);
+                ballParams.rotation.update(perc);
+                break;
+            case "verb":
+                ballSynth.setVerbWet(perc);
+                ballParams.radius.update(perc);
+                ballParams.coordinateOblongWithRadius(ball.radius);
+                break;
+            default:
+                ballSynth.setVol(perc);
+                ballParams.size.update(perc);
+                const balls = get("ballSprite");
+                balls.forEach(orbitingBall => {
+                    orbitingBall.scale = ballParams.size.val;
+                });
         }
     }
 
@@ -430,22 +423,7 @@ scene("musicBall", () => {
         if (Tone.context.state === "running") {
             ballSynth.stop();
         }
-        const knobs = get("knob");
-        knobs.forEach(obj => {
-            if (obj.is("pitch")) {
-                ballSynth.params.pitch = percify(knob.min, knob.max, obj.yOffset);
-            } else if (obj.is("freq")) {
-                ballSynth.params.freq = percify(knob.min, knob.max, obj.yOffset);
-            } else if (obj.is("dist")) {
-                ballSynth.params.dist = percify(knob.min, knob.max, obj.yOffset);
-            } else if (obj.is("vib")) {
-                ballSynth.params.vib = percify(knob.min, knob.max, obj.yOffset);
-            } else if (obj.is("verb")) {
-                ballSynth.params.verb = percify(knob.min, knob.max, obj.yOffset);
-            } else {
-                ballSynth.params.vol = percify(knob.min, knob.max, obj.yOffset);
-            }
-        });
+        saveToContainer(ballSynth.params, get("knob"));
     });
 });
 
@@ -457,8 +435,8 @@ scene("musicStar", () => {
     let currDrag = null;
 
     onLoad(() => displayContent());
-    onMousePress(() => mousePress(currDrag, "knob"));
-    onMouseRelease(() => mouseRelease(currDrag));
+    onMousePress(() => grab("knob"));
+    onMouseRelease(() => release());
 
     const theme = getTheme();
     const fgColor = theme == "dark" ? WHITE : BLACK;

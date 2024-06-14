@@ -27,3 +27,15 @@ export function choose(list) {
 export function getTheme() {
     return document.documentElement.getAttribute("data-theme");
 }
+
+export function randBipolar(center, offset) {
+    return rand(center - offset, center + offset);
+}
+
+export function saveToContainer(container, objs) {
+    objs.forEach(obj => {
+        if (obj.param in container) {
+            container[obj.param] = percify(obj.min, obj.max, obj.currVal);
+        }
+    });
+}
