@@ -439,6 +439,7 @@ scene("musicStar", () => {
     onLoad(() => displayContent());
     onMousePress(() => grab("knob"));
     onMouseRelease(() => release());
+    onUpdate(() => movePlayheads());
 
     const theme = getTheme();
     const fgColor = theme == "dark" ? WHITE : BLACK;
@@ -504,13 +505,16 @@ scene("musicStar", () => {
     }
 
     function updateTempo(perc) {
-        starSynth.sequencer.updateTempo(this.i, perc); 
+        starSynth.sequencer.updateTempo(this.i, perc);
+        if (starSynth.sequencer.matchTempo) {
+            matchTempo(this.i);
+        }
     }
 
     function updateMatchTempo() {
         starSynth.sequencer.matchTempo = !starSynth.sequencer.matchTempo;
-        starSynth.sequencer[1].tempo = starSynth.sequencer[0].tempo;
-        startPlayheads();
+        matchTempo(0);
+        matchTiming();
     }
 
     function getItemInfo(j) {
@@ -567,6 +571,7 @@ scene("musicStar", () => {
                     area(),
                     moveKnob(),
                     "knob",
+                    `knob${i}`,
                     {
                         min: knob.min,
                         max: knob.max,
@@ -605,7 +610,6 @@ scene("musicStar", () => {
         }
     }
 
-    let topStep = 11;
     const topPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
@@ -613,7 +617,6 @@ scene("musicStar", () => {
         color(fgColor),
     ]);
 
-    let bottomStep = 11;
     const bottomPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
@@ -621,60 +624,56 @@ scene("musicStar", () => {
         color(fgColor),
     ]);
 
-    function startPlayheads() {
-        if (starSynth.sequencer.matchTempo) {
-            topStep++;
-            bottomStep++;
-            if (topStep > 11) {
-                topPlayhead.pos.x = sequenceStar.playheadStart;
-                bottomPlayhead.pos.x = sequenceStar.playheadStart;
-                topStep = 0;
-                bottomStep = 0
-            } else {
-                topPlayhead.pos.x += sequenceStar.stepSize;
-                bottomPlayhead.pos.x += sequenceStar.stepSize;
-            }
+    let topStep = 11;
+    let bottomStep = 11;
+    let topElapsedTime = 0;
+    let bottomElapsedTime = 0;
+    
+    function matchTempo(i) {
+        const iOtherKnob = i ^ 1;
+        starSynth.sequencer[iOtherKnob].tempo = starSynth.sequencer[i].tempo;
+        const newAngle = lScale(knob.min, knob.max, starSynth.sequencer.getTempoPercent(iOtherKnob));
+        const otherKnob = get(`knob${iOtherKnob}`)[0];
+        otherKnob.currVal = newAngle;
+        otherKnob.angle = newAngle;
+    }
+
+    function matchTiming() {
+        topElapsedTime = bottomElapsedTime = 0;
+    }
+
+    function movePlayheads() {
+        moveTopPlayhead(dt());
+        moveBottomPlayhead(dt());
+    }
+
+    function moveTopPlayhead(dt) {
+        //if (starSynth.sequencer.matchTempo) return;
+        topElapsedTime += dt;
+        const topInterval = 60 / starSynth.sequencer[0].tempo;
+        if (topElapsedTime >= topInterval) {
+            topElapsedTime -= topInterval;
+            topStep = (topStep + 1) % 12;
+            topPlayhead.pos.x = sequenceStar.playheadStart + (topStep * sequenceStar.stepSize);
             if (starSynth.sequencer.getStep(0, topStep)) {
                 starSynth.playTop(topStep);
             }
+        }
+    }
+
+    function moveBottomPlayhead(dt) {
+        //if (starSynth.sequencer.matchTempo) return;
+        bottomElapsedTime += dt;
+        const bottomInterval = 60 / starSynth.sequencer[1].tempo;
+        if (bottomElapsedTime >= bottomInterval) {
+            bottomElapsedTime -= bottomInterval;
+            bottomStep = (bottomStep + 1) % 12;
+            bottomPlayhead.pos.x = sequenceStar.playheadStart + (bottomStep * sequenceStar.stepSize);
             if (starSynth.sequencer.getStep(1, bottomStep)) {
                 starSynth.playBottom(bottomStep);
             }
-            wait(60 / starSynth.sequencer[0].tempo, startPlayheads);
-        } else {
-            function moveTopPlayhead() {
-                if (starSynth.sequencer.matchTempo) return;
-                topStep++;
-                if (topStep > 11) {
-                    topPlayhead.pos.x = sequenceStar.playheadStart;
-                    topStep = 0;
-                } else {
-                    topPlayhead.pos.x += sequenceStar.stepSize;
-                }
-                if (starSynth.sequencer.getStep(0, topStep)) {
-                    starSynth.playTop(topStep);
-                }
-                wait(60 / starSynth.sequencer[0].tempo, moveTopPlayhead);
-            }
-            function moveBottomPlayhead() {
-                if (starSynth.sequencer.matchTempo) return;
-                bottomStep++;
-                if (bottomStep > 11) {
-                    bottomPlayhead.pos.x = sequenceStar.playheadStart;
-                    bottomStep = 0;
-                } else {
-                    bottomPlayhead.pos.x += sequenceStar.stepSize;
-                }
-                if (starSynth.sequencer.getStep(1, bottomStep)) {
-                    starSynth.playBottom(bottomStep);
-                }
-                wait(60 / starSynth.sequencer[1].tempo, moveBottomPlayhead);
-            }
-            moveTopPlayhead();
-            moveBottomPlayhead();
         }
     }
-    wait(60 / starSynth.sequencer[1].tempo, () => startPlayheads());
 });
 
 go("musicBox");
