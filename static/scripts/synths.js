@@ -1,4 +1,4 @@
-import { choose, eScale, lScale } from "./utils.js";
+import { choose, eScale, lScale, percify } from "./utils.js";
 
 //
 // Music box synths and effects
@@ -220,8 +220,8 @@ export const ballSynth = {
 
 const tempo = {
     min: 40,
-    max: 800,
-    init: 100,
+    max: 1000,
+    init: 200,
 }
 
 const topPitches = ["F4", "G4", "Ab4", "Bb4", "C5", "D5", "Eb5", "F5", "G5", "Bb5", "Ab5", "C6"];
@@ -229,6 +229,7 @@ const bottomPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4",
 
 // TODO: access all params with i and j, no words. make the get and toggle functions work with just i and j
 const sequencer = {
+    matchTempo: true,
     0: {
         skip: false,
         reverse: false,
@@ -251,6 +252,9 @@ const sequencer = {
     },
     updateTempo: function(i, perc) {
         this[i].tempo = lScale(tempo.min, tempo.max, perc);
+    },
+    getTempoPercent: function(i) {
+        return percify(tempo.min, tempo.max, this[i].tempo);
     }
 };
 sequencer.toggleStep(0, 0);

@@ -479,6 +479,8 @@ scene("musicStar", () => {
     sequenceStar.xStart = cWidth - sequenceStar.margin * 7.5 - sequenceStar.size * 7.5;
     sequenceStar.yStart = height() - 64 - sequenceStar.margin - sequenceStar.size;
     sequenceStar.scale = sequenceStar.size / starSprite.size;
+    sequenceStar.playheadStart = sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2;
+    sequenceStar.stepSize = sequenceStar.size + sequenceStar.margin;
 
     const knob = {
         min: -120,
@@ -505,6 +507,12 @@ scene("musicStar", () => {
         starSynth.sequencer.updateTempo(this.i, perc); 
     }
 
+    function updateMatchTempo() {
+        starSynth.sequencer.matchTempo = !starSynth.sequencer.matchTempo;
+        starSynth.sequencer[1].tempo = starSynth.sequencer[0].tempo;
+        startPlayheads();
+    }
+
     function getItemInfo(j) {
         if (-1 < j && j < 12) {
             return ["star", updateStar];
@@ -524,11 +532,32 @@ scene("musicStar", () => {
         || (baseSprite == "reverse" && starSynth.sequencer[i].reverse);
     }
 
+    // Draw match tempo star
+    const s = add([
+        sprite("starOutline"),
+        anchor("center"),
+        pos(sequenceStar.xStart, sequenceStar.yStart - sequenceStar.stepSize),
+        scale(sequenceStar.scale),
+        area(),
+        {
+            originalScale: sequenceStar.scale,
+            active: starSynth.sequencer.matchTempo,
+            fillSprite: "star",
+            i: 3,
+            j: 0,
+            onStateChange: updateMatchTempo,
+        }
+    ]);
+    s.onHover(() => grow(s));
+    s.onHoverEnd(() => shrink(s));
+    s.onClick(() => fillOrHollow(s));
+    if (s.active) fill(s);
+
     // Draw sequencer buttons and knobs
     for (let i = 0; i < 2; i++) {
-        const yPos = sequenceStar.yStart + i * (sequenceStar.margin + sequenceStar.size)
+        const yPos = sequenceStar.yStart + i * sequenceStar.stepSize;
         for (let j = -2; j < 14; j++) {
-            const xPos = sequenceStar.xStart + (j + 2) * (sequenceStar.size + sequenceStar.margin);
+            const xPos = sequenceStar.xStart + (j + 2) * sequenceStar.stepSize;
             if (j == -2) {
                 const k = add([
                     sprite("knob"),
@@ -542,13 +571,14 @@ scene("musicStar", () => {
                         min: knob.min,
                         max: knob.max,
                         i: i,
-                        currVal: 0,
+                        currVal: lScale(knob.min, knob.max, starSynth.sequencer.getTempoPercent(i)),
                         originalScale: sequenceStar.scale,
                         knobAction: updateTempo,
                     },
                 ]);
                 k.onHover(() => grow(k));
                 k.onHoverEnd(() => shrink(k));
+                k.angle = lScale(knob.min, knob.max, starSynth.sequencer.getTempoPercent(i));
             } else {
                 const [baseSprite, onStateChange] = getItemInfo(j);
                 const item = add([
@@ -560,27 +590,22 @@ scene("musicStar", () => {
                     {
                         originalScale: sequenceStar.scale,
                         fillSprite: baseSprite,
-                        active: false,
+                        active: isActive(baseSprite, i, j),
                         i: i,
                         j: j,
                         onStateChange: onStateChange,
                     },
                 ]);
-                item.angle = baseSprite == "reverse" ? 90 : 0;
+                if (baseSprite == "reverse") item.angle = 90;
                 item.onHover(() => growPoint(item));
                 item.onHoverEnd(() => shrinkUnpoint(item));
                 item.onClick(() => baseSprite == "reverse" ? flip(item) : fillOrHollow(item));
-                if (isActive(baseSprite, i, j)) {
-                    baseSprite == "reverse" ? flip(item) : fill(item);
-                }
+                if (item.active) baseSprite == "reverse" ? flip(item) : fill(item);
             }
         }
     }
 
-    // Playheads
-    let topTempo = 500;
-    let topStepTime = 60 / topTempo;
-    let topStep = 11
+    let topStep = 11;
     const topPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
@@ -588,8 +613,6 @@ scene("musicStar", () => {
         color(fgColor),
     ]);
 
-    let bottomTempo = 400;
-    let bottomStepTime = 60 / bottomTempo;
     let bottomStep = 11;
     const bottomPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
@@ -598,46 +621,60 @@ scene("musicStar", () => {
         color(fgColor),
     ]);
 
-    //FIXME joint tempo button will allow both playbuttons to wait from the same function to guarantee they play together
-    //when not joined, move separately
-    function moveTopPlayhead() {
-        topStep++;
-        bottomStep++;
-        if (topStep > 11) {
-            topPlayhead.pos.x = sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2;
-            bottomPlayhead.pos.x = sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2;
-            topStep = 0;
-            bottomStep = 0
+    function startPlayheads() {
+        if (starSynth.sequencer.matchTempo) {
+            topStep++;
+            bottomStep++;
+            if (topStep > 11) {
+                topPlayhead.pos.x = sequenceStar.playheadStart;
+                bottomPlayhead.pos.x = sequenceStar.playheadStart;
+                topStep = 0;
+                bottomStep = 0
+            } else {
+                topPlayhead.pos.x += sequenceStar.stepSize;
+                bottomPlayhead.pos.x += sequenceStar.stepSize;
+            }
+            if (starSynth.sequencer.getStep(0, topStep)) {
+                starSynth.playTop(topStep);
+            }
+            if (starSynth.sequencer.getStep(1, bottomStep)) {
+                starSynth.playBottom(bottomStep);
+            }
+            wait(60 / starSynth.sequencer[0].tempo, startPlayheads);
         } else {
-            topPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
-            bottomPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
+            function moveTopPlayhead() {
+                if (starSynth.sequencer.matchTempo) return;
+                topStep++;
+                if (topStep > 11) {
+                    topPlayhead.pos.x = sequenceStar.playheadStart;
+                    topStep = 0;
+                } else {
+                    topPlayhead.pos.x += sequenceStar.stepSize;
+                }
+                if (starSynth.sequencer.getStep(0, topStep)) {
+                    starSynth.playTop(topStep);
+                }
+                wait(60 / starSynth.sequencer[0].tempo, moveTopPlayhead);
+            }
+            function moveBottomPlayhead() {
+                if (starSynth.sequencer.matchTempo) return;
+                bottomStep++;
+                if (bottomStep > 11) {
+                    bottomPlayhead.pos.x = sequenceStar.playheadStart;
+                    bottomStep = 0;
+                } else {
+                    bottomPlayhead.pos.x += sequenceStar.stepSize;
+                }
+                if (starSynth.sequencer.getStep(1, bottomStep)) {
+                    starSynth.playBottom(bottomStep);
+                }
+                wait(60 / starSynth.sequencer[1].tempo, moveBottomPlayhead);
+            }
+            moveTopPlayhead();
+            moveBottomPlayhead();
         }
-        if (starSynth.sequencer.getStep(0, topStep)) {
-            starSynth.playTop(topStep);
-        }
-        if (starSynth.sequencer.getStep(1, bottomStep)) {
-            starSynth.playBottom(bottomStep);
-        }
-        wait(topStepTime, moveTopPlayhead);
     }
-
-    function moveBottomPlayhead() {
-        bottomStep++;
-        if (bottomStep > 11) {
-            bottomPlayhead.pos.x = sequenceStar.xStart;
-            bottomStep = 0;
-        } else {
-            bottomPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
-        }
-        if (starSynth.sequencer[1][bottomStep]) {
-            starSynth.playBottom(bottomStep);
-        }
-        wait(bottomStepTime, moveBottomPlayhead);
-    }
-    wait(bottomStepTime, () => {
-        //moveBottomPlayhead();
-        moveTopPlayhead();
-    });
+    wait(60 / starSynth.sequencer[1].tempo, () => startPlayheads());
 });
 
 go("musicBox");
