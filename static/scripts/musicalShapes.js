@@ -1,4 +1,4 @@
-import { boxSynth, ballSynth, starSynth } from "./synths.js";
+import { boxSynth, ballSynth, starSynth, starSequencer } from "./synths.js";
 import { lScale, choose, getTheme, randBipolar, saveToContainer } from "./utils.js";
 import { 
     moveSlider, moveKnob, grab, release, grow, shrink, growPoint,
@@ -489,30 +489,30 @@ scene("musicStar", () => {
     }
 
     function updateStar() {
-        starSynth.sequencer.toggleStep(this.i, this.j);
+        starSequencer.toggle(this.i, this.j);
     }
 
     function updateSkip() {
-        starSynth.sequencer[this.i].skip = !starSynth.sequencer[this.i].skip;
+        starSequencer[this.i].skip = !starSequencer[this.i].skip;
     }
 
     function updateRestart() {
-        starSynth.sequencer[this.i].restart = !starSynth.sequencer[this.i].restart;
+        starSequencer[this.i].restart = !starSequencer[this.i].restart;
     }
 
     function updateReverse() {
-        starSynth.sequencer[this.i].reverse = !starSynth.sequencer[this.i].reverse;
+        starSequencer[this.i].reverse = !starSequencer[this.i].reverse;
     }
 
     function updateTempo(perc) {
-        starSynth.sequencer.updateTempo(this.i, perc);
-        if (starSynth.sequencer.matchTempo) {
+        starSequencer.updateTempo(this.i, perc);
+        if (starSequencer.matchTempo) {
             matchTempo(this.i);
         }
     }
 
     function updateMatchTempo() {
-        starSynth.sequencer.matchTempo = !starSynth.sequencer.matchTempo;
+        starSequencer.matchTempo = !starSequencer.matchTempo;
         matchTempo(0);
         matchTiming();
     }
@@ -530,10 +530,10 @@ scene("musicStar", () => {
     }
 
     function isActive(baseSprite, i, j) {
-        return (baseSprite == "star" && starSynth.sequencer.getStep(i, j)) 
-        || (baseSprite == "skip" && starSynth.sequencer[i].skip)
-        || (baseSprite == "restart" && starSynth.sequencer[i].restart) 
-        || (baseSprite == "reverse" && starSynth.sequencer[i].reverse);
+        return (baseSprite == "star" && starSequencer.get(i, j)) 
+        || (baseSprite == "skip" && starSequencer[i].skip)
+        || (baseSprite == "restart" && starSequencer[i].restart) 
+        || (baseSprite == "reverse" && starSequencer[i].reverse);
     }
 
     // Draw match tempo star
@@ -545,7 +545,7 @@ scene("musicStar", () => {
         area(),
         {
             originalScale: sequenceStar.scale,
-            active: starSynth.sequencer.matchTempo,
+            active: starSequencer.matchTempo,
             fillSprite: "star",
             i: 3,
             j: 0,
@@ -576,14 +576,14 @@ scene("musicStar", () => {
                         min: knob.min,
                         max: knob.max,
                         i: i,
-                        currVal: lScale(knob.min, knob.max, starSynth.sequencer.getTempoPercent(i)),
+                        currVal: lScale(knob.min, knob.max, starSequencer.getTempoPercent(i)),
                         originalScale: sequenceStar.scale,
                         knobAction: updateTempo,
                     },
                 ]);
                 k.onHover(() => grow(k));
                 k.onHoverEnd(() => shrink(k));
-                k.angle = lScale(knob.min, knob.max, starSynth.sequencer.getTempoPercent(i));
+                k.angle = lScale(knob.min, knob.max, starSequencer.getTempoPercent(i));
             } else {
                 const [baseSprite, onStateChange] = getItemInfo(j);
                 const item = add([
@@ -630,10 +630,10 @@ scene("musicStar", () => {
     let bottomElapsedTime = 0;
     
     function matchTempo(i) {
-        const iOtherKnob = i ^ 1;
-        starSynth.sequencer[iOtherKnob].tempo = starSynth.sequencer[i].tempo;
-        const newAngle = lScale(knob.min, knob.max, starSynth.sequencer.getTempoPercent(iOtherKnob));
-        const otherKnob = get(`knob${iOtherKnob}`)[0];
+        const iOther = i ^ 1;
+        starSequencer[iOther].tempo = starSequencer[i].tempo;
+        const newAngle = lScale(knob.min, knob.max, starSequencer.getTempoPercent(iOther));
+        const otherKnob = get(`knob${iOther}`)[0];
         otherKnob.currVal = newAngle;
         otherKnob.angle = newAngle;
     }
@@ -650,12 +650,12 @@ scene("musicStar", () => {
     function moveTopPlayhead(dt) {
         //if (starSynth.sequencer.matchTempo) return;
         topElapsedTime += dt;
-        const topInterval = 60 / starSynth.sequencer[0].tempo;
+        const topInterval = 60 / starSequencer[0].tempo;
         if (topElapsedTime >= topInterval) {
             topElapsedTime -= topInterval;
             topStep = (topStep + 1) % 12;
             topPlayhead.pos.x = sequenceStar.playheadStart + (topStep * sequenceStar.stepSize);
-            if (starSynth.sequencer.getStep(0, topStep)) {
+            if (starSequencer.get(0, topStep)) {
                 starSynth.playTop(topStep);
             }
         }
@@ -664,12 +664,12 @@ scene("musicStar", () => {
     function moveBottomPlayhead(dt) {
         //if (starSynth.sequencer.matchTempo) return;
         bottomElapsedTime += dt;
-        const bottomInterval = 60 / starSynth.sequencer[1].tempo;
+        const bottomInterval = 60 / starSequencer[1].tempo;
         if (bottomElapsedTime >= bottomInterval) {
             bottomElapsedTime -= bottomInterval;
             bottomStep = (bottomStep + 1) % 12;
             bottomPlayhead.pos.x = sequenceStar.playheadStart + (bottomStep * sequenceStar.stepSize);
-            if (starSynth.sequencer.getStep(1, bottomStep)) {
+            if (starSequencer.get(1, bottomStep)) {
                 starSynth.playBottom(bottomStep);
             }
         }

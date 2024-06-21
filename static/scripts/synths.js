@@ -227,38 +227,37 @@ const tempo = {
 const topPitches = ["F4", "G4", "Ab4", "Bb4", "C5", "D5", "Eb5", "F5", "G5", "Bb5", "Ab5", "C6"];
 const bottomPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D4", "C4", "G3"];
 
-// TODO: access all params with i and j, no words. make the get and toggle functions work with just i and j
-const sequencer = {
+export const starSequencer = {
     matchTempo: true,
     0: {
         skip: false,
         reverse: false,
         restart: false,
         tempo: tempo.init,
-        seq: Array(12).fill(false),
+        0: Array(12).fill(false),
     },
     1: {
         skip: false,
         reverse: false,
         restart: false,
         tempo: tempo.init,
-        seq: Array(12).fill(false),
+        1: Array(12).fill(false),
     },
-    getStep: function(i, j) {
-        return this[i].seq[j];
+    toggle: function(i, j) {
+        this[i][i][j] = !this[i][i][j];
     },
-    toggleStep: function(i, j) {
-        this[i].seq[j] = !this[i].seq[j];
+    get: function(i, j) {
+        return this[i][i][j];
     },
     updateTempo: function(i, perc) {
         this[i].tempo = lScale(tempo.min, tempo.max, perc);
     },
     getTempoPercent: function(i) {
         return percify(tempo.min, tempo.max, this[i].tempo);
-    }
+    },
 };
-sequencer.toggleStep(0, 0);
-sequencer.toggleStep(1, 5);
+starSequencer.toggle(0, 0);
+starSequencer.toggle(1, 5);
 
 const topSynth = new Tone.Synth({
     oscillator: {
@@ -289,7 +288,6 @@ const bottomSynth = new Tone.Synth({
 }).toDestination();
 
 export const starSynth = {
-    sequencer: sequencer,
     playTop: (step) => {
         topSynth.triggerAttackRelease(topPitches[step], "4n");
     },
