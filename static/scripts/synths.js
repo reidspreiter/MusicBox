@@ -218,15 +218,43 @@ export const ballSynth = {
 // Music Star synths and effects
 //
 
+const tempo = {
+    min: 40,
+    max: 800,
+    init: 100,
+}
+
 const topPitches = ["F4", "G4", "Ab4", "Bb4", "C5", "D5", "Eb5", "F5", "G5", "Bb5", "Ab5", "C6"];
 const bottomPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D4", "C4", "G3"];
 
-const sequencer = [
-    Array(12).fill(false),
-    Array(12).fill(false),
-];
-sequencer[0][0] = true;
-sequencer[1][5] = true;
+// TODO: access all params with i and j, no words. make the get and toggle functions work with just i and j
+const sequencer = {
+    0: {
+        skip: false,
+        reverse: false,
+        restart: false,
+        tempo: tempo.init,
+        seq: Array(12).fill(false),
+    },
+    1: {
+        skip: false,
+        reverse: false,
+        restart: false,
+        tempo: tempo.init,
+        seq: Array(12).fill(false),
+    },
+    getStep: function(i, j) {
+        return this[i].seq[j];
+    },
+    toggleStep: function(i, j) {
+        this[i].seq[j] = !this[i].seq[j];
+    },
+    updateTempo: function(i, perc) {
+        this[i].tempo = lScale(tempo.min, tempo.max, perc);
+    }
+};
+sequencer.toggleStep(0, 0);
+sequencer.toggleStep(1, 5);
 
 const topSynth = new Tone.Synth({
     oscillator: {

@@ -1,6 +1,9 @@
 import { boxSynth, ballSynth, starSynth } from "./synths.js";
-import { lScale, clamp, percify, choose, getTheme, randBipolar, saveToContainer } from "./utils.js";
-import { moveSlider, moveKnob, grab, release, grow, shrink } from "./interactables.js";
+import { lScale, choose, getTheme, randBipolar, saveToContainer } from "./utils.js";
+import { 
+    moveSlider, moveKnob, grab, release, grow, shrink, growPoint,
+    shrinkUnpoint, fill, fillOrHollow, flip,
+} from "./interactables.js";
 import { boxParams, ballParams } from "./params.js";
 
 let currShape = "square";
@@ -432,7 +435,6 @@ scene("musicBall", () => {
 //
 scene("musicStar", () => {
     const {x: cWidth, y: cHeight} = center();
-    let currDrag = null;
 
     onLoad(() => displayContent());
     onMousePress(() => grab("knob"));
@@ -444,10 +446,12 @@ scene("musicStar", () => {
 
     loadSprite("starOutline", `./static/graphics/shapes/staroutline${theme}.svg`);
     loadSprite("star", `./static/graphics/shapes/star${theme}.svg`);
-    loadSprite("arrow", `./static/graphics/misc/arrow${theme}.svg`);
-    loadSprite("arrowOutline", `./static/graphics/misc/arrowoutline${theme}.svg`);
+    loadSprite("reverse", `./static/graphics/misc/arrow${theme}.svg`);
+    loadSprite("reverseOutline", `./static/graphics/misc/arrowoutline${theme}.svg`);
+    loadSprite("restart", `./static/graphics/misc/arrow${theme}.svg`);
+    loadSprite("restartOutline", `./static/graphics/misc/arrowoutline${theme}.svg`);
     loadSprite("skip", `./static/graphics/misc/skip${theme}.svg`);
-    loadSprite("skipOpen", `./static/graphics/misc/skipopen${theme}.svg`);
+    loadSprite("skipOutline", `./static/graphics/misc/skipopen${theme}.svg`);
     loadSprite("knob", `./static/graphics/misc/knob${theme}.svg`);
 
     // Center star
@@ -481,247 +485,97 @@ scene("musicStar", () => {
         max: 120,
     }
 
-    function fillSequenceStar(xPos, yPos, i, j) {
-        starSynth.sequencer[i][j] = true;
-        add([
-            sprite("star"),
-            anchor("center"),
-            pos(xPos, yPos),
-            scale(sequenceStar.scale),
-            area(),
-            `${i}${j}`,
-        ]);
+    function updateStar() {
+        starSynth.sequencer.toggleStep(this.i, this.j);
     }
 
-    function fillArrow(xPos, yPos, i) {
-        add([
-            sprite("arrow"),
-            anchor("center"),
-            pos(xPos, yPos),
-            scale(sequenceStar.scale),
-            area(),
-            `arrow${i}`,
-        ]);
+    function updateSkip() {
+        starSynth.sequencer[this.i].skip = !starSynth.sequencer[this.i].skip;
     }
 
-    function fillSkip(xPos, yPos, i) {
-        add([
-            sprite("skip"),
-            anchor("center"),
-            pos(xPos, yPos),
-            scale(sequenceStar.scale),
-            area(),
-            `skip${i}`,
-        ]);
+    function updateRestart() {
+        starSynth.sequencer[this.i].restart = !starSynth.sequencer[this.i].restart;
     }
 
-    function hollowSequenceStar(i, j) {
-        starSynth.sequencer[i][j] = false;
-        const starFilling = get(`${i}${j}`);
-        destroy(starFilling[0]);
+    function updateReverse() {
+        starSynth.sequencer[this.i].reverse = !starSynth.sequencer[this.i].reverse;
     }
 
-    function hollowArrow(i) {
-        const arrowFilling = get(`arrow${i}`);
-        destroy(arrowFilling[0]);
+    function updateTempo(perc) {
+        starSynth.sequencer.updateTempo(this.i, perc); 
     }
 
-    function hollowSkip(i) {
-        const skipFilling = get(`skip${i}`);
-        destroy(skipFilling[0]);
+    function getItemInfo(j) {
+        if (-1 < j && j < 12) {
+            return ["star", updateStar];
+        } else if (j == -1) {
+            return ["restart", updateRestart];
+        } else if (j == 13) {
+            return ["skip", updateSkip];
+        } else {
+            return ["reverse", updateReverse];
+        }
     }
 
-    // Draw sequence buttons
+    function isActive(baseSprite, i, j) {
+        return (baseSprite == "star" && starSynth.sequencer.getStep(i, j)) 
+        || (baseSprite == "skip" && starSynth.sequencer[i].skip)
+        || (baseSprite == "restart" && starSynth.sequencer[i].restart) 
+        || (baseSprite == "reverse" && starSynth.sequencer[i].reverse);
+    }
+
+    // Draw sequencer buttons and knobs
     for (let i = 0; i < 2; i++) {
         const yPos = sequenceStar.yStart + i * (sequenceStar.margin + sequenceStar.size)
-        for (let j = 0; j < 16; j++) {
-            const xPos = sequenceStar.xStart + j * (sequenceStar.size + sequenceStar.margin);
-            // spawn star buttons
-            if (1 < j && j < 14) {
-                if (starSynth.sequencer[i][j]) fillSequenceStar(xPos, yPos, i, j);
-                const s = add([
-                    sprite("starOutline"),
-                    anchor("center"),
-                    pos(xPos, yPos),
-                    scale(sequenceStar.scale),
-                    area(),
-                    {
-                        x: xPos,
-                        y: yPos,
-                        active: starSynth.sequencer[i][j] ? true : false,
-                        i: i,
-                        j: j,
-                    }
-                ]);
-                s.onHover(() => {
-                    s.scale = vec2(sequenceStar.scale * 1.1);
-                    setCursor("pointer");
-                });
-                s.onHoverEnd(() => {
-                    s.scale = vec2(sequenceStar.scale);
-                    setCursor("default");
-                });
-                s.onClick(() => {
-                    if (s.active) {
-                        hollowSequenceStar(s.i, s.j);
-                    } else {
-                        fillSequenceStar(s.x, s.y, s.i, s.j);
-                    }
-                    s.active = !s.active;
-                });
-            } else if (j == 0) {
-                // spawn tempo knobs
+        for (let j = -2; j < 14; j++) {
+            const xPos = sequenceStar.xStart + (j + 2) * (sequenceStar.size + sequenceStar.margin);
+            if (j == -2) {
                 const k = add([
                     sprite("knob"),
                     anchor("center"),
                     pos(xPos, yPos),
                     scale(sequenceStar.scale),
                     area(),
-                    knobDrag(),
+                    moveKnob(),
                     "knob",
-                    `${i}`,
                     {
-                        yOffset: 0,
-                    }
-
-                ]);
-                k.onHover(() => {
-                    if (currDrag == null) {
-                        k.scale = vec2(sequenceStar.scale * 1.2);
-                    }
-                });
-                k.onHoverEnd(() => {
-                    if (currDrag == null) {
-                        k.scale = vec2(sequenceStar.scale);
-                    }
-                });
-            } else if (j == 1) {
-                const a = add([
-                    sprite("arrowOutline"),
-                    anchor("center"),
-                    pos(xPos, yPos),
-                    scale(sequenceStar.scale),
-                    area(),
-                    "arrow",
-                    {
-                        x: xPos,
-                        y: yPos,
-                        active: false,
+                        min: knob.min,
+                        max: knob.max,
                         i: i,
-                        j: j,
+                        currVal: 0,
+                        originalScale: sequenceStar.scale,
+                        knobAction: updateTempo,
                     },
                 ]);
-                a.onHover(() => {
-                    a.scale = vec2(sequenceStar.scale * 1.1);
-                    setCursor("pointer");
-                });
-                a.onHoverEnd(() => {
-                    a.scale = vec2(sequenceStar.scale);
-                    setCursor("default");
-                });
-                a.onClick(() => {
-                    if (a.active) {
-                        hollowArrow(a.i);
-                    } else {
-                        fillArrow(a.x, a.y, a.i);
-                    }
-                    a.active = !a.active;
-                });
-            } else if (j == 14) {
-                // spawn skip buttons
-                const s = add([
-                    sprite("skipOpen"),
-                    anchor("center"),
-                    pos(xPos, yPos),
-                    scale(sequenceStar.scale),
-                    area(),
-                    "skip",
-                    {
-                        x: xPos,
-                        y: yPos,
-                        active: false,
-                        i: i,
-                        j: j,
-                    },
-                ]);
-                s.onHover(() => {
-                    s.scale = vec2(sequenceStar.scale * 1.1);
-                    setCursor("pointer");
-                });
-                s.onHoverEnd(() => {
-                    s.scale = vec2(sequenceStar.scale);
-                    setCursor("default");
-                });
-                s.onClick(() => {
-                    if (s.active) {
-                        hollowSkip(s.i);
-                    } else {
-                        fillSkip(s.x, s.y, s.i);
-                    }
-                    s.active = !s.active;
-                });
+                k.onHover(() => grow(k));
+                k.onHoverEnd(() => shrink(k));
             } else {
-                // spawn direction arrows
-                const a = add([
-                    sprite("arrow"),
+                const [baseSprite, onStateChange] = getItemInfo(j);
+                const item = add([
+                    sprite(`${baseSprite}Outline`),
                     anchor("center"),
                     pos(xPos, yPos),
                     scale(sequenceStar.scale),
-                    rotate(90),
                     area(),
-                    "direction",
                     {
-                        x: xPos,
-                        y: yPos,
+                        originalScale: sequenceStar.scale,
+                        fillSprite: baseSprite,
                         active: false,
                         i: i,
                         j: j,
+                        onStateChange: onStateChange,
                     },
                 ]);
-                a.onHover(() => {
-                    a.scale = vec2(sequenceStar.scale * 1.1);
-                    setCursor("pointer");
-                });
-                a.onHoverEnd(() => {
-                    a.scale = vec2(sequenceStar.scale);
-                    setCursor("default");
-                });
-                a.onClick(() => {
-                    if (a.active) {
-                        a.angle = 90;
-                    } else {
-                        a.angle = -90;
-                    }
-                    a.active = !a.active;
-                });
+                if (baseSprite == "reverse") {
+                    item.angle = 90;
+                }
+                item.onHover(() => growPoint(item));
+                item.onHoverEnd(() => shrinkUnpoint(item));
+                item.onClick(() => baseSprite == "reverse" ? flip(item) : fillOrHollow(item));
+                if (isActive(baseSprite, i, j)) {
+                    baseSprite == "reverse" ? flip(item) : fill(item);
+                }
             }
-        }
-    }
-
-    const sensitivity = 3;
-    function knobDrag() {
-        let yOffset = 0;
-        return {
-            id: "drag",
-            require: ["pos", "area"],
-            pick() {
-                currDrag = this;
-                yOffset = -(mousePos().y * sensitivity) - this.yOffset;
-            },
-            drop() {
-                if (!this.isHovering()) {
-                    this.scale = vec2(sequenceStar.scale);
-                }
-                currDrag = null;
-            },
-            update() {
-                if (currDrag !== this) {
-                    return;
-                }
-                const newAngle = clamp(knob.min, knob.max, -(mousePos().y * sensitivity) - yOffset);
-                this.angle = newAngle;
-                this.yOffset = newAngle;
-            },
         }
     }
 
@@ -760,10 +614,10 @@ scene("musicStar", () => {
             topPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
             bottomPlayhead.pos.x += sequenceStar.size + sequenceStar.margin;
         }
-        if (starSynth.sequencer[0][topStep]) {
+        if (starSynth.sequencer.getStep(0, topStep)) {
             starSynth.playTop(topStep);
         }
-        if (starSynth.sequencer[1][bottomStep]) {
+        if (starSynth.sequencer.getStep(1, bottomStep)) {
             starSynth.playBottom(bottomStep);
         }
         wait(topStepTime, moveTopPlayhead);
