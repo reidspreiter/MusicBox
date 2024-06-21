@@ -26,10 +26,20 @@ export function grow(obj) {
     }
 }
 
+export function growPoint(obj) {
+    obj.scale = vec2(obj.originalScale * 1.1);
+    setCursor("point");
+}
+
 export function shrink(obj) {
     if (currDrag == null) {
         obj.scale = vec2(obj.originalScale);
     }
+}
+
+export function shrinkUnpoint(obj) {
+    obj.scale = vec2(obj.originalScale);
+    setCursor("default");
 }
 
 export function moveSlider() {
@@ -87,8 +97,49 @@ export function moveKnob() {
                 this.angle = newAngle;
                 this.currVal = newAngle;
                 const perc = percify(this.min, this.max, newAngle);
-                this.knobAction(perc);
+                if ("knobAction" in this) {
+                    this.knobAction(perc);
+                }
             }
         },
+    }
+}
+
+export function fill(obj) {
+        add([
+            sprite(obj.fillSprite),
+            anchor("center"),
+            pos(obj.pos),
+            scale(obj.originalScale),
+            `${obj.i}${obj.j}`,
+        ]);
+    }
+
+function hollow(obj) {
+    const filling = get(`${obj.i}${obj.j}`);
+    destroy(filling[0]);
+}
+
+export function fillOrHollow(obj) {
+    if (obj.active) {
+        hollow(obj);
+    } else {
+        fill(obj);
+    }
+    obj.active = !obj.active;
+    if ("onStateChange" in obj) {
+        obj.onStateChange();
+    }
+}
+
+export function flip(obj) {
+    if (obj.active) {
+        obj.angle = 90;
+    } else {
+        obj.angle = -90;
+    }
+    obj.active = !obj.active;
+    if ("onStateChange" in obj) {
+        obj.onStateChange();
     }
 }
