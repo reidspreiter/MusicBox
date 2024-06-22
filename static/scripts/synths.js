@@ -225,7 +225,7 @@ const tempo = {
 }
 
 const topPitches = ["F4", "G4", "Ab4", "Bb4", "C5", "D5", "Eb5", "F5", "G5", "Bb5", "Ab5", "C6"];
-const bottomPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D4", "C4", "G3"];
+const botPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D4", "C4", "G3"];
 
 export const starSequencer = {
     matchTempo: true,
@@ -276,7 +276,7 @@ const topSynth = new Tone.Synth({
     },
 }).toDestination();
 
-const bottomSynth = new Tone.Synth({
+const botSynth = new Tone.Synth({
     oscillator: {
         type: "sawtooth",
     },
@@ -291,10 +291,11 @@ const bottomSynth = new Tone.Synth({
 }).toDestination();
 
 export const starSynth = {
-    playTop: (step) => {
-        topSynth.triggerAttackRelease(topPitches[step], "4n");
-    },
-    playBottom: (step) => {
-        bottomSynth.triggerAttackRelease(bottomPitches[step], "4n");
-    },
+    play: (level, step) => {
+        if (level == 0) {
+            topSynth.triggerAttackRelease(topPitches[step], "4n");
+        } else {
+            botSynth.triggerAttackRelease(botPitches[step], "4n");
+        }
+    }
 }

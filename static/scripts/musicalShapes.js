@@ -441,7 +441,6 @@ scene("musicStar", () => {
     onLoad(() => displayContent());
     onMousePress(() => grab("knob"));
     onMouseRelease(() => release());
-    onUpdate(() => movePlayheads());
 
     const theme = getTheme();
     const fgColor = theme == "dark" ? WHITE : BLACK;
@@ -604,7 +603,7 @@ scene("musicStar", () => {
                         onStateChange: onStateChange,
                     },
                 ]);
-                if (baseSprite == "reverse") item.angle = 90;
+                if (baseSprite == "reverse") item.angle = -90;
                 item.onHover(() => growPoint(item));
                 item.onHoverEnd(() => shrinkUnpoint(item));
                 item.onClick(() => baseSprite == "reverse" ? flip(item) : fillOrHollow(item));
@@ -618,19 +617,26 @@ scene("musicStar", () => {
         anchor("center"),
         pos(sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2, sequenceStar.yStart - sequenceStar.size * 0.8),
         color(fgColor),
+        {
+            i: top,
+            elapsedTime: 0,
+            step: 11,
+        }
     ]);
+    topPlayhead.onUpdate(() => movePlayhead(topPlayhead));
 
     const botPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
         pos(sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2, sequenceStar.yStart + sequenceStar.margin + sequenceStar.size * 1.8),
         color(fgColor),
+        {
+            i: bot,
+            elapsedTime: 0,
+            step: 11,
+        }
     ]);
-
-    let topStep = 11;
-    let botStep = 11;
-    let topElapsedTime = 0;
-    let botElapsedTime = 0;
+    botPlayhead.onUpdate(() => movePlayhead(botPlayhead));
     
     function matchTempo(i) {
         const iOther = i ^ 1;
@@ -642,7 +648,7 @@ scene("musicStar", () => {
     }
 
     function matchTiming() {
-        botElapsedTime = topElapsedTime;
+        botPlayhead.elapsedTime = topPlayhead.elapsedTime;
     }
 
     function getNextStep(level, step, reverse, skip) {
@@ -656,45 +662,20 @@ scene("musicStar", () => {
         return (step + dir + 12) % 12;
     }
 
-    function movePlayheads() {
-        moveTopPlayhead(dt());
-        moveBottomPlayhead(dt());
-    }
-
-    function moveTopPlayhead(dt) {
-        topElapsedTime += dt;
-        const topInterval = 60 / starSequencer[top].tempo;
-        if (topElapsedTime >= topInterval) {
-            topElapsedTime -= topInterval;
-            if (starSequencer[top].restart) {
-                topStep = 0;
-                starSequencer[top].restart = false;
-                // toggle restart and hollow the shape
-            } else {
-                topStep = getNextStep(top, topStep, starSequencer[top].reverse, starSequencer[top].skip);
+    function movePlayhead(obj) {
+        obj.elapsedTime += dt();
+        const interval = 60 / starSequencer[obj.i].tempo;
+        if (obj.elapsedTime >= interval) {
+            obj.elapsedTime -= interval;
+            if (starSequencer[obj.i].restart) {
+                obj.step = 11;
+                starSequencer[obj.i].restart = false;
+                // figure out how to hollow the shape
             }
-            topPlayhead.pos.x = sequenceStar.playheadStart + (topStep * sequenceStar.stepSize);
-            if (starSequencer.get(top, topStep)) {
-                starSynth.playTop(topStep);
-            }
-        }
-    }
-
-    function moveBottomPlayhead(dt) {
-        botElapsedTime += dt;
-        const bottomInterval = 60 / starSequencer[bot].tempo;
-        if (botElapsedTime >= bottomInterval) {
-            botElapsedTime -= bottomInterval;
-            if (starSequencer[bot].restart) {
-                botStep = 0;
-                starSequencer[bot].restart = false;
-                // toggle restart and hollow the shape
-            } else {
-                botStep = getNextStep(bot, botStep, starSequencer[bot].reverse, starSequencer[bot].skip);
-            }
-            botPlayhead.pos.x = sequenceStar.playheadStart + (botStep * sequenceStar.stepSize);
-            if (starSequencer.get(bot, botStep)) {
-                starSynth.playBottom(botStep);
+            obj.step = getNextStep(obj.i, obj.step, starSequencer[obj.i].reverse, starSequencer[obj.i].skip);
+            obj.pos.x = sequenceStar.playheadStart + (obj.step * sequenceStar.stepSize);
+            if (starSequencer.get(obj.i, obj.step)) {
+                starSynth.play(obj.i, obj.step);
             }
         }
     }
