@@ -234,6 +234,7 @@ export const starSequencer = {
         reverse: false,
         restart: false,
         tempo: tempo.init,
+        activeSteps: 0,
         0: Array(12).fill(false),
     },
     1: {
@@ -241,10 +242,12 @@ export const starSequencer = {
         reverse: false,
         restart: false,
         tempo: tempo.init,
+        activeSteps: 0,
         1: Array(12).fill(false),
     },
     toggle: function(i, j) {
         this[i][i][j] = !this[i][i][j];
+        this[i].activeSteps += (this[i][i][j] ? 1 : - 1);
     },
     get: function(i, j) {
         return this[i][i][j];

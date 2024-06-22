@@ -435,6 +435,8 @@ scene("musicBall", () => {
 //
 scene("musicStar", () => {
     const {x: cWidth, y: cHeight} = center();
+    const top = 0;
+    const bot = 1;
 
     onLoad(() => displayContent());
     onMousePress(() => grab("knob"));
@@ -493,6 +495,7 @@ scene("musicStar", () => {
     }
 
     function updateSkip() {
+        console.log("toggling skip");
         starSequencer[this.i].skip = !starSequencer[this.i].skip;
     }
 
@@ -513,7 +516,7 @@ scene("musicStar", () => {
 
     function updateMatchTempo() {
         starSequencer.matchTempo = !starSequencer.matchTempo;
-        matchTempo(0);
+        matchTempo(top);
         matchTiming();
     }
 
@@ -617,7 +620,7 @@ scene("musicStar", () => {
         color(fgColor),
     ]);
 
-    const bottomPlayhead = add([
+    const botPlayhead = add([
         rect(sequenceStar.pointWidth, sequenceStar.pointWidth),
         anchor("center"),
         pos(sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2, sequenceStar.yStart + sequenceStar.margin + sequenceStar.size * 1.8),
@@ -625,9 +628,9 @@ scene("musicStar", () => {
     ]);
 
     let topStep = 11;
-    let bottomStep = 11;
+    let botStep = 11;
     let topElapsedTime = 0;
-    let bottomElapsedTime = 0;
+    let botElapsedTime = 0;
     
     function matchTempo(i) {
         const iOther = i ^ 1;
@@ -639,7 +642,18 @@ scene("musicStar", () => {
     }
 
     function matchTiming() {
-        topElapsedTime = bottomElapsedTime = 0;
+        botElapsedTime = topElapsedTime;
+    }
+
+    function getNextStep(level, step, reverse, skip) {
+        const dir = reverse ? -1 : 1;
+        if (skip && starSequencer[level].activeSteps != 0) {
+            do {
+                step = (step + dir + 12) % 12;
+            } while (!starSequencer.get(level, step));
+            return step;
+        }
+        return (step + dir + 12) % 12;
     }
 
     function movePlayheads() {
@@ -648,29 +662,39 @@ scene("musicStar", () => {
     }
 
     function moveTopPlayhead(dt) {
-        //if (starSynth.sequencer.matchTempo) return;
         topElapsedTime += dt;
-        const topInterval = 60 / starSequencer[0].tempo;
+        const topInterval = 60 / starSequencer[top].tempo;
         if (topElapsedTime >= topInterval) {
             topElapsedTime -= topInterval;
-            topStep = (topStep + 1) % 12;
+            if (starSequencer[top].restart) {
+                topStep = 0;
+                starSequencer[top].restart = false;
+                // toggle restart and hollow the shape
+            } else {
+                topStep = getNextStep(top, topStep, starSequencer[top].reverse, starSequencer[top].skip);
+            }
             topPlayhead.pos.x = sequenceStar.playheadStart + (topStep * sequenceStar.stepSize);
-            if (starSequencer.get(0, topStep)) {
+            if (starSequencer.get(top, topStep)) {
                 starSynth.playTop(topStep);
             }
         }
     }
 
     function moveBottomPlayhead(dt) {
-        //if (starSynth.sequencer.matchTempo) return;
-        bottomElapsedTime += dt;
-        const bottomInterval = 60 / starSequencer[1].tempo;
-        if (bottomElapsedTime >= bottomInterval) {
-            bottomElapsedTime -= bottomInterval;
-            bottomStep = (bottomStep + 1) % 12;
-            bottomPlayhead.pos.x = sequenceStar.playheadStart + (bottomStep * sequenceStar.stepSize);
-            if (starSequencer.get(1, bottomStep)) {
-                starSynth.playBottom(bottomStep);
+        botElapsedTime += dt;
+        const bottomInterval = 60 / starSequencer[bot].tempo;
+        if (botElapsedTime >= bottomInterval) {
+            botElapsedTime -= bottomInterval;
+            if (starSequencer[bot].restart) {
+                botStep = 0;
+                starSequencer[bot].restart = false;
+                // toggle restart and hollow the shape
+            } else {
+                botStep = getNextStep(bot, botStep, starSequencer[bot].reverse, starSequencer[bot].skip);
+            }
+            botPlayhead.pos.x = sequenceStar.playheadStart + (botStep * sequenceStar.stepSize);
+            if (starSequencer.get(bot, botStep)) {
+                starSynth.playBottom(botStep);
             }
         }
     }
