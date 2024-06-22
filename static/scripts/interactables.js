@@ -134,9 +134,9 @@ export function fillOrHollow(obj) {
 
 export function flip(obj) {
     if (obj.active) {
-        obj.angle = 90;
-    } else {
         obj.angle = -90;
+    } else {
+        obj.angle = 90;
     }
     obj.active = !obj.active;
     if ("onStateChange" in obj) {
