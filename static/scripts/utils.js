@@ -39,3 +39,7 @@ export function saveToContainer(container, objs) {
         }
     });
 }
+
+export function knobify(perc) {
+    return lScale(-120, 120, perc);
+}

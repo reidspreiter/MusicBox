@@ -229,20 +229,29 @@ const botPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D
 
 export const starSequencer = {
     matchTempo: true,
+    matchFreq: true,
     0: {
         skip: false,
         reverse: false,
         restart: false,
+        arp: false,
         tempo: tempo.init,
+        freq: 100,
         activeSteps: 0,
+        lowestStep: 0,
+        highestStep: 0,
         0: Array(12).fill(false),
     },
     1: {
         skip: false,
         reverse: false,
         restart: false,
+        arp: false,
         tempo: tempo.init,
+        freq: 100,
         activeSteps: 0,
+        lowestStep: 0,
+        highestStep: 0,
         1: Array(12).fill(false),
     },
     toggle: function(i, j) {
@@ -258,9 +267,12 @@ export const starSequencer = {
     getTempoPercent: function(i) {
         return percify(tempo.min, tempo.max, this[i].tempo);
     },
+    getFreqPercent: function(i) {
+        return 0;
+    }
 };
 starSequencer.toggle(0, 0);
-starSequencer.toggle(1, 5);
+starSequencer.toggle(1, 6);
 
 const topSynth = new Tone.Synth({
     oscillator: {

@@ -97,9 +97,7 @@ export function moveKnob() {
                 this.angle = newAngle;
                 this.currVal = newAngle;
                 const perc = percify(this.min, this.max, newAngle);
-                if ("knobAction" in this) {
-                    this.knobAction(perc);
-                }
+                this.knobAction(perc);
             }
         },
     }

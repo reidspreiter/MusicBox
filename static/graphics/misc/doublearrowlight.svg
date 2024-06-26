@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="64mm"
+   height="64mm"
+   viewBox="0 0 64 64"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="doublearrowlight.svg"
+   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.7951281"
+     inkscape:cx="82.723901"
+     inkscape:cy="151.79975"
+     inkscape:window-width="1920"
+     inkscape:window-height="991"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <defs
+     id="defs1" />
+  <g
+     id="layer1"
+     transform="rotate(90,34.740089,29.252326)">
+    <rect
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:5.00355;stroke-opacity:1"
+       id="rect1"
+       width="13.263554"
+       height="24.866562"
+       x="30.855988"
+       y="19.559134" />
+    <path
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:6.131;stroke-opacity:1"
+       id="path1"
+       d="M 12.04054,49.308877 5.7923665,38.486725 -0.45580508,27.664574 l 12.49634508,-2e-6 12.496344,1e-6 -6.248171,10.822153 z"
+       transform="matrix(1.4889541,0,0,0.64937425,19.559953,27.991187)" />
+    <path
+       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:6.131;stroke-opacity:1"
+       id="path1-3"
+       d="M 12.04054,49.308877 5.7923665,38.486725 -0.45580508,27.664574 l 12.49634508,-2e-6 12.496344,1e-6 -6.248171,10.822153 z"
+       transform="matrix(-1.4889541,0,0,-0.64937425,55.415574,35.993643)" />
+  </g>
+</svg>

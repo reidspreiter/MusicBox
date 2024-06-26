@@ -10,7 +10,7 @@ function getCurrTheme(localStorageTheme, systemSettingDark) {
 }
 
 // Update html theme
-function updateThemeOnHtmlEl(theme) {
+function updateThemeOnHtml(theme) {
     document.querySelector("html").setAttribute("data-theme", theme);
 }
 
@@ -19,14 +19,14 @@ const localStorageTheme = localStorage.getItem("theme");
 const systemSettingDark = window.matchMedia("(prefers-color-scheme: light)");
 let currentThemeSetting = getCurrTheme(localStorageTheme, systemSettingDark);
 
-updateThemeOnHtmlEl(currentThemeSetting);
+updateThemeOnHtml(currentThemeSetting);
 
 // Theme toggle button
 button.addEventListener("click", (event) => {
     const newTheme = currentThemeSetting === "dark" ? "light" : "dark";
 
     localStorage.setItem("theme", newTheme);
-    updateThemeOnHtmlEl(newTheme);
+    updateThemeOnHtml(newTheme);
 
     currentThemeSetting = newTheme;
 });
