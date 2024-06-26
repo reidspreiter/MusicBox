@@ -644,9 +644,8 @@ scene("musicStar", () => {
             i: top,
             elapsedTime: 0,
             step: 11,
-            arpDir: -1,
+            arp: false,
             prevStep: -1,
-            updateStep: getNextStep,
         }
     ]);
     topPlayhead.onUpdate(() => movePlayhead(topPlayhead));
@@ -660,10 +659,6 @@ scene("musicStar", () => {
             i: bot,
             elapsedTime: 0,
             step: 11,
-            arpDir: 1,
-            reverse: false,
-            prevStep: -1,
-            updateStep: getNextStep,
         }
     ]);
     botPlayhead.onUpdate(() => movePlayhead(botPlayhead));
@@ -681,49 +676,33 @@ scene("musicStar", () => {
         botPlayhead.elapsedTime = topPlayhead.elapsedTime;
     }
 
-    function getNextStep() {
-        if (starSequencer[this.i].arp) {
-            if (this.arpDir == 0) {
-                this.reverse = starSequencer[this.i].reverse;
-                this.arpDir = this.reverse ? -1 : 1;
-                this.prevStep = -1;
-            }
-            if (this.reverse != starSequencer[this.i].reverse) {
-                this.reverse = !this.reverse;
-                this.arpDir *= -1;
-            }
-            if (starSequencer[this.i].skip && starSequencer[this.i].activeSteps != 0) {
-                do {
-                    if (this.step == 11) {
-                        this.arpDir = -1;
-                    } else if (this.step == 0) {
-                        this.arpDir = 1;
-                    }
-                    this.step = (this.step + this.arpDir + 12) % 12;
-                } while (!starSequencer.get(this.i, this.step) || this.step == this.prevStep);
-                console.log(this.prevStep);
-                this.prevStep = this.step;
-                return;
-            }
-            if (this.step == 11) {
-                this.arpDir = -1;
-            } else if (this.step == 0) {
-                this.arpDir = 1;
-            }
-            this.step = (this.step + this.arpDir + 12) % 12;
-        } else {
-            if (this.arpDir != 0) {
-                this.arpDir = 0;
-            }
-            const dir = starSequencer[this.i].reverse ? -1 : 1;
-            if (starSequencer[this.i].skip && starSequencer[this.i].activeSteps != 0) {
-                do {
-                    this.step = (this.step + dir + 12) % 12;
-                } while (!starSequencer.get(this.i, this.step));
-                return;
-            }
-            this.step = (this.step + dir + 12) % 12;
+    function adjustArpDir(level, step, dir) {
+        if ((dir == -1 && step == 0) || (dir == 1 && step == 11)) {
+            dir *= -1;
+            starSequencer[level].reverse = dir == 1 ? false : true;
         }
+        return dir;
+    }
+
+    function getNextStep(level, step) {
+        const seq = starSequencer[level];
+        let dir = seq.reverse ? -1 : 1;
+        const arp = seq.arp;
+        const skipReq = arp ? 1 : 0;
+        if (seq.skip && seq.activeSteps > skipReq) {
+            const prevStep = step;
+            do {
+                if (arp) {
+                    dir = adjustArpDir(level, step, dir);
+                }
+                step = (step + dir + 12) % 12;
+            } while (!starSequencer.get(level, step) || (arp && step == prevStep));
+            return step;
+        }
+        if (arp) {
+            dir = adjustArpDir(level, step, dir);
+        }
+        return (step + dir + 12) % 12;
     }
 
     function movePlayhead(ph) {
@@ -734,9 +713,9 @@ scene("musicStar", () => {
             if (starSequencer[ph.i].restart) {
                 ph.step = 11;
                 starSequencer[ph.i].restart = false;
-                // figure out how to hollow the shape
+                // TODO: figure out how to hollow the shape
             }
-            ph.updateStep();
+            ph.step = getNextStep(ph.i, ph.step);
             ph.pos.x = sequenceStar.playheadStart + (ph.step * sequenceStar.stepSize);
             if (starSequencer.get(ph.i, ph.step)) {
                 starSynth.play(ph.i, ph.step);
