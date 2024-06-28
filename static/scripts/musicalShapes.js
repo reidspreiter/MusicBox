@@ -518,7 +518,7 @@ scene("musicStar", () => {
     }
 
     function updateFreq(perc) {
-
+        starSynth.updateFreq(this.i, perc);
     }
 
     function updateMatchTempo() {
@@ -529,6 +529,7 @@ scene("musicStar", () => {
 
     function updateMatchFreq() {
         starSequencer.matchFreq = !starSequencer.matchFreq;
+        //matchFreq(top);
     }
 
     function getItemInfo(j) {

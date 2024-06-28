@@ -281,7 +281,16 @@ const starReverb = new Tone.Reverb({
     decay: 2,
 }).toDestination();
 
-const starFilter = {
+const topFilter = {
+    e: new Tone.Filter({
+        type: "lowpass",
+        frequency: 300,
+    }).connect(starReverb),
+    min: 180,
+    max: 20000,
+};
+
+const botFilter = {
     e: new Tone.Filter({
         type: "lowpass",
         frequency: 300,
@@ -303,7 +312,7 @@ const topSynth = new Tone.Synth({
         sustain: 0.1,
         release: 0.1,
     },
-}).connect(starFilter.e);
+}).connect(topFilter.e);
 
 const botSynth = new Tone.Synth({
     oscillator: {
@@ -317,7 +326,7 @@ const botSynth = new Tone.Synth({
         sustain: 0.1,
         release: 0.1,
     },
-}).connect(starFilter.e);
+}).connect(botFilter.e);
 
 export const starSynth = {
     play: (level, step) => {
@@ -325,6 +334,13 @@ export const starSynth = {
             topSynth.triggerAttackRelease(topPitches[step], "32n");
         } else {
             botSynth.triggerAttackRelease(botPitches[step], "32n");
+        }
+    },
+    updateFreq: (level, perc) => {
+        if (level == 0) {
+            topFilter.e.frequency.rampTo(lScale(topFilter.min, topFilter.max, perc))
+        } else {
+            botFilter.e.frequency.rampTo(lScale(botFilter.min, botFilter.max, perc))
         }
     }
 }
