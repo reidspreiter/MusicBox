@@ -1,8 +1,7 @@
 import { boxSynth, ballSynth, starSynth, starSequencer } from "./synths.js";
 import { lScale, choose, getTheme, randBipolar, saveToContainer, knobify } from "./utils.js";
 import { 
-    moveSlider, moveKnob, grab, release, grow, shrink, growPoint,
-    shrinkUnpoint, fill, fillOrHollow, flip,
+    moveSlider, moveKnob, grab, release, grow, shrink, fill, fillOrHollow, flip,
 } from "./interactables.js";
 import { boxParams, ballParams } from "./params.js";
 
@@ -192,8 +191,8 @@ scene("musicBox", () => {
                 sliderAction: updateParams,
             },
         ]);
-        sliderBox.onHover(() => grow(sliderBox, 1));
-        sliderBox.onHoverEnd(() => shrink(sliderBox, 1));
+        sliderBox.onHover(() => grow(sliderBox, "grab"));
+        sliderBox.onHoverEnd(() => shrink(sliderBox, "default"));
     });
 
     function updateParams(perc) {
@@ -336,8 +335,8 @@ scene("musicBall", () => {
             },
             "knob",
         ]);
-        k.onHover(() => grow(k));
-        k.onHoverEnd(() => shrink(k));
+        k.onHover(() => grow(k, "grab"));
+        k.onHoverEnd(() => shrink(k, "default"));
         k.angle = knobify(percent);
     });
 
@@ -571,8 +570,8 @@ scene("musicStar", () => {
                 onStateChange: i == 0 ? updateMatchTempo : updateMatchFreq,
             }
         ]);
-        s.onHover(() => grow(s));
-        s.onHoverEnd(() => shrink(s));
+        s.onHover(() => grow(s, "pointer"));
+        s.onHoverEnd(() => shrink(s, "default"));
         s.onClick(() => fillOrHollow(s));
         if (s.active) fill(s);
     }
@@ -601,8 +600,8 @@ scene("musicStar", () => {
                     knobAction: j == 17 ? updateTempo : updateFreq,
                 },
             ]);
-            k.onHover(() => grow(k));
-            k.onHoverEnd(() => shrink(k));
+            k.onHover(() => grow(k, "grab"));
+            k.onHoverEnd(() => shrink(k, "default"));
             k.angle = angle;
         }
     }
@@ -629,8 +628,8 @@ scene("musicStar", () => {
                 },
             ]);
             if (baseSprite == "reverse") item.angle = -90;
-            item.onHover(() => growPoint(item));
-            item.onHoverEnd(() => shrinkUnpoint(item));
+            item.onHover(() => grow(item, "pointer"));
+            item.onHoverEnd(() => shrink(item, "default"));
             item.onClick(() => baseSprite == "reverse" ? flip(item) : fillOrHollow(item));
             if (item.active) baseSprite == "reverse" ? flip(item) : fill(item);
         }

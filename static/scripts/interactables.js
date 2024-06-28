@@ -6,7 +6,6 @@ export function grab(objName) {
     if (!currDrag) {
         for (const obj of get(objName)) {
             if (obj.isHovering()) {
-                setCursor("move");
                 obj.pick();
             }
         }
@@ -16,30 +15,29 @@ export function grab(objName) {
 export function release() {
     if (currDrag) {
         currDrag.drop(currDrag);
-        setCursor("default");
     }
 }
 
-export function grow(obj) {
+export function grow(obj, cursorType = undefined) {
     if (currDrag == null) {
         obj.scale = vec2(obj.originalScale * 1.1);
     }
-}
-
-export function growPoint(obj) {
-    obj.scale = vec2(obj.originalScale * 1.1);
-    setCursor("point");
-}
-
-export function shrink(obj) {
-    if (currDrag == null) {
-        obj.scale = vec2(obj.originalScale);
+    if (cursorType != undefined) {
+        if (currDrag == null) {
+            setCursor(cursorType);
+        }
     }
 }
 
-export function shrinkUnpoint(obj) {
-    obj.scale = vec2(obj.originalScale);
-    setCursor("default");
+export function shrink(obj, cursorType = undefined) {
+    if (currDrag == null) {
+        obj.scale = vec2(obj.originalScale);
+    }
+    if (cursorType != undefined) {
+        if (currDrag == null) {
+            setCursor(cursorType);
+        }
+    }
 }
 
 export function moveSlider() {
@@ -49,12 +47,16 @@ export function moveSlider() {
         require: ["pos", "area"],
         pick() {
             currDrag = this;
+            setCursor("grabbing");
             xOffset = mousePos().x - this.pos.x;
         },
         drop() {
             currDrag = null;
             if (!this.isHovering()) {
                 shrink(this);
+                setCursor("default");
+            } else {
+                setCursor("grab");
             }
         },
         update() {
@@ -80,12 +82,16 @@ export function moveKnob() {
         require: ["pos", "area"],
         pick() {
             currDrag = this;
+            setCursor("grabbing");
             yOffset = -(mousePos().y * sensitivity) - this.currVal;
         },
         drop() {
             currDrag = null;
             if (!this.isHovering()) {
                 shrink(this);
+                setCursor("default");
+            } else {
+                setCursor("grab");
             }
         },
         update() {
