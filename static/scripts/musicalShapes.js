@@ -578,7 +578,7 @@ scene("musicStar", () => {
 
     // Draw parameter knobs
     for (let i = 0; i < 2; i++) {
-        let yPos = sequenceStar.yStart - (i + 1) * sequenceStar.stepSize;
+        let yPos = sequenceStar.yStart - (2 - i) * sequenceStar.stepSize;
         for (let j = 17; j < 19; j++) {
             const xPos = sequenceStar.xStart + sequenceStar.stepSize + (j - 17) * 13 * sequenceStar.stepSize;
             const angle = knobify(j == 17 ? starSequencer.getTempoPercent(i) : starSequencer.getFreqPercent(i));
@@ -606,7 +606,7 @@ scene("musicStar", () => {
         }
     }
 
-    // Draw sequencer buttons and knobs
+    // Draw sequencer buttons and step options
     for (let i = 0; i < 2; i++) {
         const yPos = sequenceStar.yStart + i * sequenceStar.stepSize;
         for (let j = -2; j < 14; j++) {

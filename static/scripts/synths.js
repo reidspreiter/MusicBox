@@ -274,40 +274,57 @@ export const starSequencer = {
 starSequencer.toggle(0, 0);
 starSequencer.toggle(1, 6);
 
+const starReverb = new Tone.Reverb({
+    wet: 0.3,
+    roomSize: 1,
+    preDelay: 0.1,
+    decay: 2,
+}).toDestination();
+
+const starFilter = {
+    e: new Tone.Filter({
+        type: "lowpass",
+        frequency: 300,
+    }).connect(starReverb),
+    min: 180,
+    max: 20000,
+};
+
+
 const topSynth = new Tone.Synth({
     oscillator: {
         type: "sawtooth",
     },
-    volume: -16,
+    volume: -17,
     maxPolyphony: 4,
     envelope: {
         attack: 0.01,
-        decay: 0.5,
+        decay: 0,
         sustain: 0.1,
-        release: 0.3,
+        release: 0.1,
     },
-}).toDestination();
+}).connect(starFilter.e);
 
 const botSynth = new Tone.Synth({
     oscillator: {
         type: "sawtooth",
     },
-    volume: -16,
+    volume: -12,
     maxPolyphony: 4,
     envelope: {
         attack: 0.01,
-        decay: 0.5,
+        decay: 0,
         sustain: 0.1,
-        release: 0.3,
+        release: 0.1,
     },
-}).toDestination();
+}).connect(starFilter.e);
 
 export const starSynth = {
     play: (level, step) => {
         if (level == 0) {
-            topSynth.triggerAttackRelease(topPitches[step], "4n");
+            topSynth.triggerAttackRelease(topPitches[step], "32n");
         } else {
-            botSynth.triggerAttackRelease(botPitches[step], "4n");
+            botSynth.triggerAttackRelease(botPitches[step], "32n");
         }
     }
 }
