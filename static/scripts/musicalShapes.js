@@ -13,8 +13,6 @@ const elems = {
     squareBtn: document.getElementById("square"),
     circleBtn: document.getElementById("circle"),
     starBtn: document.getElementById("star"),
-    header: document.getElementById("header"),
-    btnDiv: document.getElementById("buttons"),
     themeBtn: document.getElementById("theme-toggle"),
 }
 
@@ -24,18 +22,29 @@ elems.starBtn.addEventListener("click", () => changeShape("star"));
 elems.themeBtn.addEventListener("click", () => updateScene());
 
 elems.audioBtn.addEventListener("click", () => {
-    Tone.start();
-    elems.audioBtn.classList.add("hide");
-    audioEnabled = true;
+    const theme = getTheme();
+    if (!audioEnabled) {
+        Tone.start();
+        elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/volume${theme}.svg"></img>`;
+        audioEnabled = true;
 
-    if (currShape == 2) {
-        ballSynth.synth.start();
+        if (currShape == 2) {
+            ballSynth.synth.start();
+        }
+    } else {
+        elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/novolume${theme}.svg"></img>`;
+        audioEnabled = false;
+
+        if (currShape == 2) {
+            ballSynth.synth.stop();
+        }
     }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    const theme = getTheme();
     if (Tone.context.state === "running") {
-        elems.audioBtn.classList.add("hide");
+        elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/volume${theme}.svg"></img>`;
         audioEnabled = true;
     }
     updateScene(false);
@@ -56,30 +65,28 @@ function changeShape(shape) {
 
 function updateScene(refreshScene = true) {
     const theme = getTheme();
-    elems.themeBtn.innerHTML = `<img src="./static/graphics/shapes/${currShape}${theme}.svg"></img>`;
+    elems.themeBtn.innerHTML = `<img src="./static/graphics/icons/${theme}.svg"></img>`;
     elems.squareBtn.innerHTML = `<img src="./static/graphics/shapes/squareoutline${theme}.svg"></img>`;
     elems.circleBtn.innerHTML = `<img src="./static/graphics/shapes/circleoutline${theme}.svg"></img>`;
     elems.starBtn.innerHTML = `<img src="./static/graphics/shapes/staroutline${theme}.svg"></img>`;
+    elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/${audioEnabled ? "" : "no"}volume${theme}.svg"></img>`;
 
     if (currShape == "square") {
         elems.squareBtn.innerHTML = `<img src="./static/graphics/shapes/square${theme}.svg"></img>`;
-        elems.header.innerText = "Music Box";
         if (refreshScene) go("musicBox");
     } else if (currShape == "circle") {
         elems.circleBtn.innerHTML = `<img src="./static/graphics/shapes/circle${theme}.svg"></img>`;
-        elems.header.innerText = "Music Ball";
         if (refreshScene) go("musicBall");
     } else {
         elems.starBtn.innerHTML = `<img src="./static/graphics/shapes/star${theme}.svg"></img>`;
-        elems.header.innerText = "Music Star";
         if (refreshScene) go("musicStar");
     }
 }
 
 function displayContent() {
-    elems.header.classList.remove("hide");
-    elems.btnDiv.classList.remove("hide");
-    elems.themeBtn.classList.remove("hide");
+    //elems.header.classList.remove("hide");
+    //elems.btnDiv.classList.remove("hide");
+    //elems.themeBtn.classList.remove("hide");
 }
 
 function drawBackground(theme) {

@@ -7,19 +7,18 @@
     <link rel="stylesheet" href="./static/styles/homeStyles.css">
 </head>
 <body>
-    <canvas id="home-canvas"></canvas>
-    <h1 id="header" class="hide">Music Box</h1>
-    <button id="theme-toggle" class="hide"><img src="./static/graphics/shapes/squarelight.svg"></button>
-    <div id="buttons" class="hide">
-        <div>
-            <button onclick="" id="start-button">Enter</button>
-            <button id="audio-button">Enable Audio</button>
+    <div id="topnav">
+        <button id="enter" class="topnav-item left">Enter</button>
+        <div class="center">
+            <button id="square" class="topnav-item"><img src="./static/graphics/shapes/squarelight.svg"></button>
+            <button id="circle" class="topnav-item"><img src="./static/graphics/shapes/circleoutlinelight.svg"></button>
+            <button id="star" class="topnav-item"><img src="./static/graphics/shapes/staroutlinelight.svg"></button>
         </div>
-        <div id="shape-selector">
-            <button id="square"><img src="./static/graphics/shapes/squarelight.svg"></button>
-            <button id="circle"><img src="./static/graphics/shapes/circleoutlinelight.svg"></button>
-            <button id="star"><img src="./static/graphics/shapes/staroutlinelight.svg"></button>
-        </div>
+        <button id="audio-button" class="topnav-item right"><img src="./static/graphics/icons/novolumelight.svg"></button>
+        <button id="theme-toggle" class="topnav-item right"><img src="./static/graphics/icons/light.svg"></button>
+    </div>
+    <div id="canvas-container">
+        <canvas id="home-canvas"></canvas>
     </div>
     <script src="https://unpkg.com/tone"></script>
     <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
