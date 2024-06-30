@@ -163,7 +163,7 @@ const powerSynth = {
             type: "sawtooth4",
         },
         volume: -8,
-        maxPolyphony: 4,
+        maxPolyphony: 3,
         debug: false,
         envelope: {
             attack: 1,
@@ -206,11 +206,11 @@ export const ballSynth = {
     setVerbWet: (perc) => {
         reverb2.e.wet.value = eScale(reverb2.min, reverb2.max, perc);
     },
-    start: () => {
-        powerSynth.e.triggerAttack(["C2", "G2", "E3", "B3"]);
+    playNotes: (time) => {
+        powerSynth.e.triggerAttackRelease(["C2", "B2", "E3"], "8m");
     },
     stop: () => {
-        powerSynth.e.triggerRelease(["C2", "G2", "E3", "B3"]);
+        powerSynth.e.triggerRelease(["C2", "B2", "E3"]);
     },
 };
 

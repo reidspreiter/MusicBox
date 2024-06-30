@@ -27,17 +27,10 @@ elems.audioBtn.addEventListener("click", () => {
         Tone.start();
         elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/volume${theme}.svg"></img>`;
         audioEnabled = true;
-
-        if (currShape == 2) {
-            ballSynth.synth.start();
-        }
     } else {
         elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/novolume${theme}.svg"></img>`;
         audioEnabled = false;
-
-        if (currShape == 2) {
-            ballSynth.synth.stop();
-        }
+        Tone.Transport.stop();
     }
 });
 
@@ -83,11 +76,20 @@ function updateScene(refreshScene = true) {
     }
 }
 
-function displayContent() {
-    //elems.header.classList.remove("hide");
-    //elems.btnDiv.classList.remove("hide");
-    //elems.themeBtn.classList.remove("hide");
+const notation = [
+    "1n1",
+    "2n1", "2n2",
+    "4n1", "4n2",
+    "8n1", "8n2", "8n3", "8n4",
+    "16n1", "16n2", "16n3",
+    "32n1", "32n2",
+];
+function loadNotationSprites(theme) {
+    notation.forEach((note) => {
+        loadSprite(note, `./static/graphics/notation/${note}${theme}.png`);
+    });
 }
+
 
 function drawBackground(theme) {
     if (theme == "dark") {
@@ -110,7 +112,6 @@ function baseShapeSize() {
 scene("musicBox", () => {
     const {x: cWidth, y: cHeight} = center();
 
-    onLoad(() => displayContent());
     onMousePress(() => grab("slider"));
     onMouseRelease(() => release());
 
@@ -119,21 +120,9 @@ scene("musicBox", () => {
     const bgColor = theme == "dark" ? BLACK : WHITE;
     const fgColor = theme == "dark" ? WHITE : BLACK;
     drawBackground(theme);
+    loadNotationSprites(theme);
 
     boxParams.setup(cHeight);
-
-    // Load notation sprites
-    const notation = [
-        "1n1",
-        "2n1", "2n2",
-        "4n1", "4n2",
-        "8n1", "8n2", "8n3", "8n4",
-        "16n1", "16n2", "16n3",
-        "32n1", "32n2",
-    ];
-    notation.forEach((note) => {
-        loadSprite(note, `./static/graphics/notation/${note}${theme}.png`);
-    });
 
     // Center box
     const boxSize = baseShapeSize();
@@ -285,21 +274,17 @@ scene("musicBox", () => {
 //
 scene("musicBall", () => {
     const {x: cWidth, y: cHeight} = center();
-    let currDrag = null;
+    const twoPI = 2 * Math.PI;
 
-    onLoad(() => displayContent());
     onMousePress(() => grab("knob"));
     onMouseRelease(() => release());
-
-    if (Tone.context.state === "running") {
-        ballSynth.start();
-    }
 
     // Draw black background if dark mode enabled
     const theme = getTheme();
     const fgColor = theme === "dark" ? WHITE : BLACK;
     drawBackground(theme);
 
+    loadNotationSprites(theme);
     loadSprite("knob", `./static/graphics/misc/knob${theme}.svg`);
     loadSprite("ball", `./static/graphics/misc/ball${theme}.svg`);
 
@@ -360,37 +345,64 @@ scene("musicBall", () => {
         ballSynth.params.pitch, ballSynth.params.dist, ballSynth.params.vib, 
     );
 
-    for (let i = 0; i < 4; i++) {
-        add([
-            sprite("ball"),
-            anchor("center"),
-            pos(center().add(Vec2.fromAngle(90 * i).scale(ballParams.radius.val))),
-            scale(ballParams.size.val),
-            rotate(0),
-            z(1),
-            {
-                orbPos: (90 * i) * (Math.PI / 180),
-            },
-            "ballSprite"
-        ]);
+    // Orbiting ball
+    const b = add([
+        sprite("ball"),
+        anchor("center"),
+        pos(cWidth - ballParams.radius.val, cHeight),
+        scale(ballParams.size.val),
+        rotate(0),
+        z(1),
+        {
+            orbPos: Math.PI,
+        },
+    ]);
+    b.onUpdate(() => {
+        b.orbPos = (b.orbPos + dt() * ballParams.speed.val) % twoPI;
+        b.pos = vec2(
+            cWidth + ballParams.radius.val * Math.cos(b.orbPos) + randBipolar(0, ballParams.deviation.val),
+            cHeight + (ballParams.radius.val - ballParams.oblong.val) * Math.sin(b.orbPos) + randBipolar(0, ballParams.deviation.val),
+        );
+        b.z = b.pos.y < cHeight ? -1 : 1;
+        b.angle = (b.angle + ballParams.rotation.val * dt()) % 360;
+    });
+
+    const loop = new Tone.Loop(play, "8m").start(0);
+    Tone.Transport.bpm.value = 60;
+    Tone.Transport.start();
+
+    function play(time) {
+        ballSynth.playNotes(time);
+        Tone.Draw.schedule((time) => {
+            drawSpirallingNote();
+        }, time);
     }
 
-    // Orbit and rotate each sprite
-    onUpdate("ballSprite", (ballSprite) => {
-        ballSprite.orbPos += dt() * ballParams.speed.val;
-        const xPos = cWidth + ballParams.radius.val * Math.cos(ballSprite.orbPos);
-        const yPos = cHeight + (ballParams.radius.val - ballParams.oblong.val) * Math.sin(ballSprite.orbPos);
-
-        if (ballSprite.pos.y < cHeight) {
-            ballSprite.z = -1;
-        } else {
-            ballSprite.z = 1;
-        }
-
-        ballSprite.pos.x = xPos + randBipolar(0, ballParams.deviation.val);
-        ballSprite.pos.y = yPos + randBipolar(0, ballParams.deviation.val);
-        ballSprite.angle += ballParams.rotation.val * dt();
-    });
+    function drawSpirallingNote() {
+        const n = add([
+            sprite(choose(notation)),
+            pos(center()),
+            anchor("center"),
+            scale(0.034),
+            z(2),
+            rotate(0),
+            lifespan(42),
+            {
+                orbPos: b.orbPos + Math.PI,
+                radius: 0,
+            },
+        ]);
+        n.onUpdate(() => {
+            n.orbPos = (n.orbPos + dt() * ballParams.speed.val) % twoPI;
+            n.pos = vec2(
+                cWidth + n.radius * Math.cos(n.orbPos) + randBipolar(0, ballParams.deviation.val),
+                cHeight + Math.max(n.radius - ballParams.oblong.val, 0) * Math.sin(n.orbPos) + randBipolar(0, ballParams.deviation.val),
+            );
+            n.radius += 0.05;
+            n.z = n.pos.y < cHeight ? -2 : 2;
+            n.angle = (n.angle + ballParams.rotation.val * dt()) % 360;
+        });
+    }
 
     function updateParams(perc) {
         switch (this.param) {
@@ -419,17 +431,16 @@ scene("musicBall", () => {
             default:
                 ballSynth.setVol(perc);
                 ballParams.size.update(perc);
-                const balls = get("ballSprite");
-                balls.forEach(orbitingBall => {
-                    orbitingBall.scale = ballParams.size.val;
-                });
+                b.scale = ballParams.size.val;
         }
     }
 
     // Stop synth and save knob data
     onSceneLeave(() => {
-        if (Tone.context.state === "running") {
+        if (audioEnabled) {
             ballSynth.stop();
+            loop.stop();
+            Tone.Transport.stop();
         }
         saveToContainer(ballSynth.params, get("knob"));
     });
@@ -443,7 +454,6 @@ scene("musicStar", () => {
     const top = 0;
     const bot = 1;
 
-    onLoad(() => displayContent());
     onMousePress(() => grab("knob"));
     onMouseRelease(() => release());
 
@@ -451,6 +461,7 @@ scene("musicStar", () => {
     const fgColor = theme == "dark" ? WHITE : BLACK;
     drawBackground(theme);
 
+    loadSprite("dodecagram", `./static/graphics/shapes/dodecagram${theme}.svg`);
     loadSprite("starOutline", `./static/graphics/shapes/staroutline${theme}.svg`);
     loadSprite("star", `./static/graphics/shapes/star${theme}.svg`);
     loadSprite("reverse", `./static/graphics/misc/arrow${theme}.svg`);
@@ -471,7 +482,7 @@ scene("musicStar", () => {
     const musicStarSize = baseShapeSize();
     const starScale = musicStarSize / starSprite.size;
     add([
-        sprite("star"),
+        sprite("dodecagram"),
         anchor("center"),
         pos(center()),
         scale(starScale),
