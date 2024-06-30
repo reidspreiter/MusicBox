@@ -18,6 +18,7 @@ const filter = {
     e: new Tone.Filter({
         type: "lowpass",
         frequency: 20000,
+        Q: 4,
     }).connect(reverb.e),
     min: 180,
     max: 20000,
@@ -123,6 +124,7 @@ const filter2 = {
     e: new Tone.Filter({
         type: "lowpass",
         frequency: 20000,
+        Q: 7,
     }).connect(reverb2.e),
     min: 180,
     max: 20000,
@@ -285,6 +287,7 @@ const topFilter = {
     e: new Tone.Filter({
         type: "lowpass",
         frequency: 300,
+        Q: 10,
     }).connect(starReverb),
     min: 180,
     max: 20000,
@@ -294,6 +297,7 @@ const botFilter = {
     e: new Tone.Filter({
         type: "lowpass",
         frequency: 300,
+        Q: 10,
     }).connect(starReverb),
     min: 180,
     max: 20000,
