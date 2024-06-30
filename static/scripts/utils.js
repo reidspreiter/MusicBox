@@ -1,11 +1,16 @@
 // Align percentages to a specific scale exponentially
-export function eScale(min, max, percent) {
-    return min + Math.pow(percent, 2) * (max - min);
+export function eScale(min, max, perc) {
+    return min + Math.pow(perc, 2) * (max - min);
 }
 
 // Align percentages to a specific scale linearly
-export function lScale(min, max, percent) {
-    return min + percent * (max - min);
+export function lScale(min, max, perc) {
+    return min + perc * (max - min);
+}
+
+// scale for filter frequency vals
+export function fScale(min, max, perc) {
+    return min * Math.pow(max / min, perc);
 }
 
 // Restrict values to a min and max

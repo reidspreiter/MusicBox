@@ -1,4 +1,4 @@
-import { choose, eScale, lScale, percify } from "./utils.js";
+import { choose, eScale, lScale, fScale, percify } from "./utils.js";
 
 //
 // Music box synths and effects
@@ -17,10 +17,10 @@ const reverb = {
 const filter = {
     e: new Tone.Filter({
         type: "lowpass",
-        frequency: 12000,
+        frequency: 20000,
     }).connect(reverb.e),
     min: 180,
-    max: 12000,
+    max: 20000,
 };
 
 const delay = {
@@ -88,7 +88,7 @@ export const boxSynth = {
         delay.e.wet.value = eScale(delay.min, delay.max, perc);
     },
     setFreq: (perc) => {
-        filter.e.frequency.rampTo(eScale(filter.min, filter.max, perc), 0.1);
+        filter.e.frequency.rampTo(fScale(filter.min, filter.max, perc), 0.1);
     },
     setVerbWet: (perc) => {
         reverb.e.wet.value = eScale(reverb.min, reverb.max, perc);
@@ -122,10 +122,10 @@ const reverb2 = {
 const filter2 = {
     e: new Tone.Filter({
         type: "lowpass",
-        frequency: 12000,
+        frequency: 20000,
     }).connect(reverb2.e),
-    min: 200,
-    max: 14000,
+    min: 180,
+    max: 20000,
 };
 
 const distortion2 = {
@@ -198,7 +198,7 @@ export const ballSynth = {
         vibrato.e.depth.value = eScale(vibrato.minDepth, vibrato.maxDepth, perc);
     },
     setFreq: (perc) => {
-        filter2.e.frequency.rampTo(eScale(filter2.min, filter2.max, perc), 0.1);
+        filter2.e.frequency.rampTo(fScale(filter2.min, filter2.max, perc), 0.1);
     },
     setDist: (perc) => {
         distortion2.e.distortion = lScale(distortion2.min, distortion2.max, perc);
@@ -338,9 +338,9 @@ export const starSynth = {
     },
     updateFreq: (level, perc) => {
         if (level == 0) {
-            topFilter.e.frequency.rampTo(lScale(topFilter.min, topFilter.max, perc))
+            topFilter.e.frequency.rampTo(fScale(topFilter.min, topFilter.max, perc))
         } else {
-            botFilter.e.frequency.rampTo(lScale(botFilter.min, botFilter.max, perc))
+            botFilter.e.frequency.rampTo(fScale(botFilter.min, botFilter.max, perc))
         }
     }
 }

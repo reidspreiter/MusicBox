@@ -1,5 +1,5 @@
 import { boxSynth, ballSynth, starSynth, starSequencer } from "./synths.js";
-import { lScale, choose, getTheme, randBipolar, saveToContainer, knobify } from "./utils.js";
+import { choose, getTheme, randBipolar, saveToContainer, knobify } from "./utils.js";
 import { 
     moveSlider, moveKnob, grab, release, grow, shrink, fill, fillOrHollow, flip,
 } from "./interactables.js";
