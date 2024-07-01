@@ -507,6 +507,10 @@ scene("musicStar", () => {
         max: 120,
     }
 
+    function iOp(i) {
+        return i ^ 1;
+    }
+
     function updateStar() {
         starSequencer.toggle(this.i, this.j);
     }
@@ -536,6 +540,9 @@ scene("musicStar", () => {
 
     function updateFreq(perc) {
         starSynth.updateFreq(this.i, perc);
+        if (starSequencer.matchFreq) {
+            matchFreq(this.i);
+        }
     }
 
     function updateMatchTempo() {
@@ -546,7 +553,7 @@ scene("musicStar", () => {
 
     function updateMatchFreq() {
         starSequencer.matchFreq = !starSequencer.matchFreq;
-        //matchFreq(top);
+        matchFreq(top);
     }
 
     function getItemInfo(j) {
@@ -608,7 +615,7 @@ scene("musicStar", () => {
                 area(),
                 moveKnob(),
                 "knob",
-                `knob${i}`,
+                j == 17 ? `temp${i}` : `freq${i}`,
                 {
                     min: knob.min,
                     max: knob.max,
@@ -682,10 +689,19 @@ scene("musicStar", () => {
     botPlayhead.onUpdate(() => movePlayhead(botPlayhead));
     
     function matchTempo(i) {
-        const iOther = i ^ 1;
+        const iOther = iOp(i);
         starSequencer[iOther].tempo = starSequencer[i].tempo;
-        const newAngle = knobify(starSequencer.getTempoPercent(iOther));
-        const otherKnob = get(`knob${iOther}`)[0];
+        const newAngle = get(`temp${i}`)[0].currVal;
+        const otherKnob = get(`temp${iOther}`)[0];
+        otherKnob.currVal = newAngle;
+        otherKnob.angle = newAngle;
+    }
+
+    function matchFreq(i) {
+        const iOther = iOp(i);
+        starSynth.matchFreq(iOther);
+        const newAngle = get(`freq${i}`)[0].currVal;
+        const otherKnob = get(`freq${iOther}`)[0];
         otherKnob.currVal = newAngle;
         otherKnob.angle = newAngle;
     }

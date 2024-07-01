@@ -13,6 +13,10 @@ export function fScale(min, max, perc) {
     return min * Math.pow(max / min, perc);
 }
 
+export function fPercify(min, max, value) {
+    return Math.log(value / min) / Math.log(max / min) ;
+}
+
 // Restrict values to a min and max
 export function clamp(min, max, value) {
     return Math.min(max, Math.max(value, min));

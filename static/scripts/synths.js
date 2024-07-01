@@ -1,4 +1,4 @@
-import { choose, eScale, lScale, fScale, percify } from "./utils.js";
+import { choose, eScale, lScale, fScale, percify, fPercify } from "./utils.js";
 
 //
 // Music box synths and effects
@@ -238,7 +238,6 @@ export const starSequencer = {
         restart: false,
         arp: false,
         tempo: tempo.init,
-        freq: 100,
         activeSteps: 0,
         lowestStep: 0,
         highestStep: 0,
@@ -250,7 +249,6 @@ export const starSequencer = {
         restart: false,
         arp: false,
         tempo: tempo.init,
-        freq: 100,
         activeSteps: 0,
         lowestStep: 0,
         highestStep: 0,
@@ -270,7 +268,10 @@ export const starSequencer = {
         return percify(tempo.min, tempo.max, this[i].tempo);
     },
     getFreqPercent: function(i) {
-        return 0;
+        if (i == 0) {
+            return fPercify(topFilter.min, topFilter.max, topFilter.e.frequency.value);
+        }
+        return fPercify(botFilter.min, botFilter.max, botFilter.e.frequency.value);
     }
 };
 starSequencer.toggle(0, 0);
@@ -286,7 +287,7 @@ const starReverb = new Tone.Reverb({
 const topFilter = {
     e: new Tone.Filter({
         type: "lowpass",
-        frequency: 300,
+        frequency: 20000,
         Q: 10,
     }).connect(starReverb),
     min: 180,
@@ -296,7 +297,7 @@ const topFilter = {
 const botFilter = {
     e: new Tone.Filter({
         type: "lowpass",
-        frequency: 300,
+        frequency: 20000,
         Q: 10,
     }).connect(starReverb),
     min: 180,
@@ -342,9 +343,16 @@ export const starSynth = {
     },
     updateFreq: (level, perc) => {
         if (level == 0) {
-            topFilter.e.frequency.rampTo(fScale(topFilter.min, topFilter.max, perc))
+            topFilter.e.frequency.rampTo(fScale(topFilter.min, topFilter.max, perc));
         } else {
-            botFilter.e.frequency.rampTo(fScale(botFilter.min, botFilter.max, perc))
+            botFilter.e.frequency.rampTo(fScale(botFilter.min, botFilter.max, perc));
+        }
+    },
+    matchFreq: (level) => {
+        if (level == 0) {
+            topFilter.e.frequency.rampTo(botFilter.e.frequency.value);
+        } else {
+            botFilter.e.frequency.rampTo(topFilter.e.frequency.value);
         }
     }
 }
