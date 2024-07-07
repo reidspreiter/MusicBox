@@ -230,8 +230,14 @@ const topPitches = ["F4", "G4", "Ab4", "Bb4", "C5", "D5", "Eb5", "F5", "G5", "Bb
 const botPitches = ["F2", "Bb2", "C3", "Eb3", "F3", "Bb3", "C4", "D4", "Eb4", "D4", "C4", "G3"];
 
 export const starSequencer = {
-    matchTempo: true,
-    matchFreq: true,
+    match: {
+        tempo: true,
+        freq: true,
+        arp: false,
+        restart: true,
+        skip: false,
+        reverse: false,
+    },
     0: {
         skip: false,
         reverse: false,

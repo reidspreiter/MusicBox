@@ -1,9 +1,15 @@
-import { boxSynth, ballSynth, starSynth, starSequencer } from "./synths.js";
-import { choose, getTheme, randBipolar, saveToContainer, knobify } from "./utils.js";
-import { 
-    moveSlider, moveKnob, grab, release, grow, shrink, fill, fillOrHollow, flip,
+import {
+    boxSynth, ballSynth, starSynth, starSequencer,
+} from "./synths.js";
+import {
+    choose, getTheme, randBipolar, saveToContainer, knobify,
+} from "./utils.js";
+import {
+    moveSlider, moveKnob, grab, release, grow, shrink, fill, hollow, fillOrHollow, flip, pressButton,
 } from "./interactables.js";
-import { boxParams, ballParams } from "./params.js";
+import {
+    boxParams, ballParams,
+} from "./params.js";
 
 let currShape = "square";
 let audioEnabled = false;
@@ -496,110 +502,51 @@ scene("musicStar", () => {
     sequenceStar.size = sequenceStar.region / 18;
     sequenceStar.pointWidth = 49.135 / 241.890 * sequenceStar.size;
     sequenceStar.margin = sequenceStar.size * 2 / 15;
+    sequenceStar.stepSize = sequenceStar.size + sequenceStar.margin;
     sequenceStar.xStart = cWidth - sequenceStar.margin * 7.5 - sequenceStar.size * 7.5;
-    sequenceStar.yStart = height() - 64 - sequenceStar.margin - sequenceStar.size;
+    sequenceStar.yStart = height() - sequenceStar.stepSize * 3;
     sequenceStar.scale = sequenceStar.size / starSprite.size;
     sequenceStar.playheadStart = sequenceStar.xStart + sequenceStar.size * 2 + sequenceStar.margin * 2;
-    sequenceStar.stepSize = sequenceStar.size + sequenceStar.margin;
 
     const knob = {
         min: -120,
         max: 120,
     }
 
-    function iOp(i) {
-        return i ^ 1;
-    }
-
-    function updateStar() {
-        starSequencer.toggle(this.i, this.j);
-    }
-
-    function updateSkip() {
-        starSequencer[this.i].skip = !starSequencer[this.i].skip;
-    }
-
-    function updateRestart() {
-        starSequencer[this.i].restart = !starSequencer[this.i].restart;
-    }
-
-    function updateReverse() {
-        starSequencer[this.i].reverse = !starSequencer[this.i].reverse;
-    }
-
-    function updateArp() {
-        starSequencer[this.i].arp = !starSequencer[this.i].arp;
-    }
-
-    function updateTempo(perc) {
-        starSequencer.updateTempo(this.i, perc);
-        if (starSequencer.matchTempo) {
-            matchTempo(this.i);
-        }
-    }
-
-    function updateFreq(perc) {
-        starSynth.updateFreq(this.i, perc);
-        if (starSequencer.matchFreq) {
-            matchFreq(this.i);
-        }
-    }
-
-    function updateMatchTempo() {
-        starSequencer.matchTempo = !starSequencer.matchTempo;
-        matchTempo(top);
-        matchTiming();
-    }
-
-    function updateMatchFreq() {
-        starSequencer.matchFreq = !starSequencer.matchFreq;
-        matchFreq(top);
-    }
-
-    function getItemInfo(j) {
-        if (-1 < j && j < 12) {
-            return ["star", updateStar];
-        } else if (j == -2) {
-            return ["skip", updateSkip];
-        } else if (j == -1) {
-            return ["restart", updateRestart];
-        } else if (j == 13) {
-            return ["arp", updateArp];
-        } else {
-            return ["reverse", updateReverse];
-        }
-    }
-
-    function isActive(baseSprite, i, j) {
-        return (baseSprite == "star" && starSequencer.get(i, j))
-        || (baseSprite == "arp" && starSequencer[i].arp)
-        || (baseSprite == "skip" && starSequencer[i].skip)
-        || (baseSprite == "restart" && starSequencer[i].restart) 
-        || (baseSprite == "reverse" && starSequencer[i].reverse);
-    }
-
-    // Draw match stars
-    for (let i = 0; i < 2; i++) {
+    function drawMatchStar(x, y, type, i, j, onPress, currState) {
         const s = add([
             sprite("starOutline"),
             anchor("center"),
-            pos(sequenceStar.xStart + i * 15 * sequenceStar.stepSize, sequenceStar.yStart - sequenceStar.stepSize * 1.5),
+            pos(x, y),
             scale(sequenceStar.scale),
             area(),
             {
                 originalScale: sequenceStar.scale,
-                active: starSequencer.matchFreq,
-                fillSprite: "star",
+                active: currState,
+                name: "star",
+                type: type,
                 i: i,
-                j: 16,
-                onStateChange: i == 0 ? updateMatchTempo : updateMatchFreq,
-            }
+                j: j,
+                onPress: onPress,
+            },
+            `${type}${i}${j}`,
         ]);
         s.onHover(() => grow(s, "pointer"));
         s.onHoverEnd(() => shrink(s, "default"));
-        s.onClick(() => fillOrHollow(s));
+        s.onClick(() => pressButton(s, fillOrHollow));
         if (s.active) fill(s);
     }
+
+    drawMatchStar(
+        sequenceStar.xStart, sequenceStar.yStart - sequenceStar.stepSize * 1.5,
+        "tempo", 3, 1,
+        toggleMatchTempo, starSequencer.match.tempo,
+    );
+    drawMatchStar(
+        sequenceStar.xStart + 15 * sequenceStar.stepSize, sequenceStar.yStart - sequenceStar.stepSize * 1.5,
+        "freq", 3, 2,
+        toggleMatchFreq, starSequencer.match.freq,
+    );
 
     // Draw parameter knobs
     for (let i = 0; i < 2; i++) {
@@ -631,13 +578,36 @@ scene("musicStar", () => {
         }
     }
 
+    function getBaseSprite(j) {
+        switch (j) {
+            case -2:
+                return "skip";
+            case -1:
+                return "restart";
+            case 12:
+                return "reverse";
+            case 13:
+                return "arp";
+            default:
+                return "star";
+        }
+    }
+
+    function isActive(sprite, i, j) {
+        return (sprite == "star" && starSequencer.get(i, j))
+        || (sprite == "arp" && starSequencer[i].arp)
+        || (sprite == "skip" && starSequencer[i].skip)
+        || (sprite == "restart" && starSequencer[i].restart) 
+        || (sprite == "reverse" && starSequencer[i].reverse);
+    }
+
     // Draw sequencer buttons and step options
     for (let i = 0; i < 2; i++) {
         const yPos = sequenceStar.yStart + i * sequenceStar.stepSize;
         for (let j = -2; j < 14; j++) {
             const xPos = sequenceStar.xStart + (j + 2) * sequenceStar.stepSize;
-            const [baseSprite, onStateChange] = getItemInfo(j);
-            const item = add([
+            const baseSprite = getBaseSprite(j);
+            const b = add([
                 sprite(`${baseSprite}Outline`),
                 anchor("center"),
                 pos(xPos, yPos),
@@ -645,18 +615,28 @@ scene("musicStar", () => {
                 area(),
                 {
                     originalScale: sequenceStar.scale,
-                    fillSprite: baseSprite,
+                    name: baseSprite,
                     active: isActive(baseSprite, i, j),
                     i: i,
                     j: j,
-                    onStateChange: onStateChange,
+                    onPress: updateSequencer,
                 },
+                `${baseSprite}${i}${j}`,
             ]);
-            if (baseSprite == "reverse") item.angle = -90;
-            item.onHover(() => grow(item, "pointer"));
-            item.onHoverEnd(() => shrink(item, "default"));
-            item.onClick(() => baseSprite == "reverse" ? flip(item) : fillOrHollow(item));
-            if (item.active) baseSprite == "reverse" ? flip(item) : fill(item);
+            if (baseSprite == "reverse") b.angle = -90;
+            b.onHover(() => grow(b, "pointer"));
+            b.onHoverEnd(() => shrink(b, "default"));
+            b.onClick(() => baseSprite == "reverse" ? pressButton(b, flip) : pressButton(b, fillOrHollow));
+            if (b.active) baseSprite == "reverse" ? flip(b) : fill(b);
+
+            // Draw match star for each step option pair
+            if (i == 1 && (j < 0 || j > 11)) {
+                drawMatchStar(
+                    xPos, yPos + sequenceStar.stepSize,
+                    baseSprite, 3, j,
+                    toggleSequencerMatches, starSequencer.match[baseSprite],
+                );
+            }
         }
     }
 
@@ -687,6 +667,62 @@ scene("musicStar", () => {
         }
     ]);
     botPlayhead.onUpdate(() => movePlayhead(botPlayhead));
+
+    function iOp(i) {
+        return i ^ 1;
+    }
+
+    function updateSequencer() {
+        if (this.name == "star") {
+            starSequencer.toggle(this.i, this.j);
+        } else {
+            starSequencer[this.i][this.name] = !starSequencer[this.i][this.name];
+            if (starSequencer.match[this.name]) {
+                matchSequencerButtons(this.name, this.i, this.j);
+            }
+        }
+    }
+
+    function toggleSequencerMatches() {
+        starSequencer.match[this.type] = !starSequencer.match[this.type];
+        matchSequencerButtons(this.type, top, this.j);
+    }
+
+    function matchSequencerButtons(type, i, j) {
+        const iOther = iOp(i);
+        const oldState = starSequencer[iOther][type];
+        const newState = starSequencer[i][type];
+        if (oldState != newState) {
+            starSequencer[iOther][type] = newState;
+            const otherButton = get(`${type}${iOther}${j}`)[0];
+            type == "reverse" ? flip(otherButton) : fillOrHollow(otherButton);
+        }
+    }
+
+    function updateTempo(perc) {
+        starSequencer.updateTempo(this.i, perc);
+        if (starSequencer.match.tempo) {
+            matchTempo(this.i);
+        }
+    }
+
+    function updateFreq(perc) {
+        starSynth.updateFreq(this.i, perc);
+        if (starSequencer.match.freq) {
+            matchFreq(this.i);
+        }
+    }
+
+    function toggleMatchTempo() {
+        starSequencer.match.tempo = !starSequencer.match.tempo;
+        matchTempo(top);
+        matchTiming();
+    }
+
+    function toggleMatchFreq() {
+        starSequencer.match.freq = !starSequencer.match.freq;
+        matchFreq(top);
+    }
     
     function matchTempo(i) {
         const iOther = iOp(i);
@@ -747,11 +783,11 @@ scene("musicStar", () => {
             if (starSequencer[ph.i].restart) {
                 ph.step = 11;
                 starSequencer[ph.i].restart = false;
-                // TODO: figure out how to hollow the shape
+                hollow(get(`restart${ph.i}${-1}`)[0]);
             }
             ph.step = getNextStep(ph.i, ph.step);
             ph.pos.x = sequenceStar.playheadStart + (ph.step * sequenceStar.stepSize);
-            if (starSequencer.get(ph.i, ph.step)) {
+            if (starSequencer.get(ph.i, ph.step) && audioEnabled) {
                 starSynth.play(ph.i, ph.step);
             }
         }

@@ -110,30 +110,24 @@ export function moveKnob() {
 }
 
 export function fill(obj) {
-        add([
-            sprite(obj.fillSprite),
-            anchor("center"),
-            pos(obj.pos),
-            scale(obj.originalScale),
-            `${obj.i}${obj.j}`,
-        ]);
-    }
+    add([
+        sprite(obj.name),
+        anchor("center"),
+        pos(obj.pos),
+        scale(obj.originalScale),
+        `${obj.i}${obj.j}`,
+    ]);
+    obj.active = true;
+}
 
-function hollow(obj) {
-    const filling = get(`${obj.i}${obj.j}`);
-    destroy(filling[0]);
+export function hollow(obj) {
+    const filling = get(`${obj.i}${obj.j}`)[0];
+    destroy(filling);
+    obj.active = false;
 }
 
 export function fillOrHollow(obj) {
-    if (obj.active) {
-        hollow(obj);
-    } else {
-        fill(obj);
-    }
-    obj.active = !obj.active;
-    if ("onStateChange" in obj) {
-        obj.onStateChange();
-    }
+    obj.active ? hollow(obj) : fill(obj);
 }
 
 export function flip(obj) {
@@ -143,7 +137,11 @@ export function flip(obj) {
         obj.angle = 90;
     }
     obj.active = !obj.active;
-    if ("onStateChange" in obj) {
-        obj.onStateChange();
+}
+
+export function pressButton(obj, visualResponse) {
+    visualResponse(obj);
+    if ("onPress" in obj) {
+        obj.onPress();
     }
 }
