@@ -348,11 +348,8 @@ export const starSynth = {
         }
     },
     updateFreq: (level, perc) => {
-        if (level == 0) {
-            topFilter.e.frequency.rampTo(fScale(topFilter.min, topFilter.max, perc));
-        } else {
-            botFilter.e.frequency.rampTo(fScale(botFilter.min, botFilter.max, perc));
-        }
+        const filter = level == 0 ? topFilter : botFilter;
+        filter.e.frequency.rampTo(fScale(filter.min, filter.max, perc));
     },
     matchFreq: (level) => {
         if (level == 0) {
@@ -360,5 +357,9 @@ export const starSynth = {
         } else {
             botFilter.e.frequency.rampTo(topFilter.e.frequency.value);
         }
+    },
+    getFreqPercent: (level) => {
+        const filter = level == 0 ? topFilter : botFilter;
+        return percify(filter.min, filter.max, filter.e.frequency.value);
     }
 }

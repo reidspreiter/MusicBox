@@ -1,14 +1,17 @@
 import {
     boxSynth, ballSynth, starSynth, starSequencer,
 } from "./synths.js";
+
 import {
     choose, getTheme, randBipolar, saveToContainer, knobify,
 } from "./utils.js";
+
 import {
     moveSlider, moveKnob, grab, release, grow, shrink, fill, hollow, fillOrHollow, flip, pressButton,
 } from "./interactables.js";
+
 import {
-    boxParams, ballParams,
+    boxParams, ballParams, starParams,
 } from "./params.js";
 
 let currShape = "square";
@@ -481,6 +484,7 @@ scene("musicStar", () => {
     loadSprite("arp", `./static/graphics/misc/doublearrow${theme}.svg`);
     loadSprite("arpOutline", `./static/graphics/misc/doublearrowoutline${theme}.svg`);
     loadSprite("knob", `./static/graphics/misc/knob${theme}.svg`);
+    loadNotationSprites(theme);
 
     // Center star
     const starSprite = {
@@ -496,6 +500,8 @@ scene("musicStar", () => {
         scale(starScale),
         "star",
     ]);
+
+    starParams.setup(musicStarSize, cWidth, cHeight, starSynth.getFreqPercent(top), starSynth.getFreqPercent(bot));
 
     // Sequencer
     const sequenceStar = {
@@ -710,7 +716,9 @@ scene("musicStar", () => {
 
     function updateFreq(perc) {
         starSynth.updateFreq(this.i, perc);
+        starParams.noteSpacing.updatePerc(this.i, perc);
         if (starSequencer.match.freq) {
+            starParams.noteSpacing.updatePerc(iOp(this.i), perc);
             matchFreq(this.i);
         }
     }
@@ -789,10 +797,55 @@ scene("musicStar", () => {
             }
             ph.step = getNextStep(ph.i, ph.step);
             ph.pos.x = sequenceStar.playheadStart + (ph.step * sequenceStar.stepSize);
-            if (starSequencer.get(ph.i, ph.step) && audioEnabled) {
-                starSynth.play(ph.i, ph.step);
+            if (starSequencer.get(ph.i, ph.step)) {
+                drawVisuals(ph.i, ph.step, interval);
+                if (audioEnabled) {
+                    starSynth.play(ph.i, ph.step);
+                }
             }
         }
+    }
+
+    const centerVec = center();
+    const unitVectors = []
+    for (let i = 0; i < 12; i++) {
+        const angle = i * Math.PI / 6;
+        unitVectors.push(new Vec2(Math.cos(angle), Math.sin(angle)));
+    }
+
+    const maxValues = []
+    for (let i = 0; i < unitVectors.length; i++) {
+        const vec = unitVectors[i];
+        const height = i > 6 ? cHeight - 40 : cHeight; // account for height of navbar
+        maxValues.push(Math.min(cWidth / Math.abs(vec.x), height / Math.abs(vec.y)));
+    }
+    
+    function drawVisuals(level, step, time) {
+        const unitVector = unitVectors[step];
+        const distance = starParams.noteSpacing.getDist(level, maxValues[step]);
+        const position = centerVec.add(unitVector.scale(distance));
+        add([
+            sprite(choose(notation)),
+            pos(position),
+            anchor("center"),
+            scale(0.025),
+            lifespan(time),
+            z(-2),
+        ]);
+        
+        const angle = level == 0 ? 1 : -1;
+        const s = add([
+            sprite("starOutline"),
+            pos(center()),
+            anchor("center"),
+            scale(sequenceStar.scale / 2),
+            lifespan(time),
+            rotate(0),
+            move(center().angle(position), -center().dist(position) / time),
+        ]);
+        s.onUpdate(() => {
+            s.angle = (s.angle + angle) % 360;
+        });
     }
 });
 

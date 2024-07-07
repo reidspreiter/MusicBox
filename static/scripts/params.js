@@ -121,3 +121,32 @@ export const ballParams = {
         this.rotation.update(currVib);
     },
 }
+
+export const starParams = {
+    noteSpacing: {
+        min: 0,
+        max: 0,
+        0: {
+            perc: 0,
+        },
+        1: {
+            perc: 0,
+        },
+        updatePerc: function(level, perc) {
+            this[level].perc = perc;
+        },
+        getDist: function(level, max) {
+            const trueDist = lScale(this.min, this.max, this[level].perc);
+            if (trueDist > max - 35) {
+                return max - 35;
+            }
+            return trueDist;
+        },
+    },
+    setup: function(musicStarSize, cWidth, cHeight, topFreqPerc, botFreqPerc) {
+        this.noteSpacing.min = musicStarSize / 2 + 35;
+        this.noteSpacing.max = Math.max(cWidth, cHeight) - 35;
+        this.noteSpacing.updatePerc(0, topFreqPerc);
+        this.noteSpacing.updatePerc(1, botFreqPerc);
+    },
+}
