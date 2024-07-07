@@ -384,6 +384,8 @@ scene("musicBall", () => {
         }, time);
     }
 
+    const radiusGrowth = (Math.sqrt(Math.pow(cHeight, 2) + Math.pow(cWidth, 2)) + 40) / 42;
+    console.log(radiusGrowth);
     function drawSpirallingNote() {
         const n = add([
             sprite(choose(notation)),
@@ -404,7 +406,7 @@ scene("musicBall", () => {
                 cWidth + n.radius * Math.cos(n.orbPos) + randBipolar(0, ballParams.deviation.val),
                 cHeight + Math.max(n.radius - ballParams.oblong.val, 0) * Math.sin(n.orbPos) + randBipolar(0, ballParams.deviation.val),
             );
-            n.radius += 0.05;
+            n.radius += radiusGrowth * dt();
             n.z = n.pos.y < cHeight ? -2 : 2;
             n.angle = (n.angle + ballParams.rotation.val * dt()) % 360;
         });
