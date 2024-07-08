@@ -34,12 +34,14 @@ elems.audioBtn.addEventListener("click", () => {
     const theme = getTheme();
     if (!audioEnabled) {
         Tone.start();
+        Tone.Transport.start();
         elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/volume${theme}.svg"></img>`;
         audioEnabled = true;
     } else {
         elems.audioBtn.innerHTML = `<img src="./static/graphics/icons/novolume${theme}.svg"></img>`;
         audioEnabled = false;
         Tone.Transport.stop();
+        ballSynth.stop();
     }
 });
 
@@ -378,7 +380,9 @@ scene("musicBall", () => {
 
     const loop = new Tone.Loop(play, "8m").start(0);
     Tone.Transport.bpm.value = 60;
-    Tone.Transport.start();
+    if (audioEnabled) {
+        Tone.Transport.start();
+    }
 
     function play(time) {
         ballSynth.playNotes(time);
